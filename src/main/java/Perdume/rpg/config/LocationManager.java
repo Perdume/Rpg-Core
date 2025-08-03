@@ -46,13 +46,19 @@ public class LocationManager {
         ConfigurationSection section = locationsConfig.getConfigurationSection("spawn-locations");
         if (section != null) {
             for (String key : section.getKeys(false)) {
-                // [핵심] world, x, y, z, yaw, pitch 모든 좌표를 불러옵니다.
+                // [핵심] world, x, y, z, yaw, pitch를 각각의 키로 읽어옵니다.
                 String worldName = section.getString(key + ".world");
-                World world = Bukkit.getWorld(worldName);
-                if (world == null) {
-                    Rpg.log.warning("'" + key + "' 스폰 위치를 불러올 수 없습니다: 월드 '" + worldName + "'을(를) 찾을 수 없습니다.");
+                if (worldName == null) {
+                    Rpg.log.warning("'" + key + "' 스폰 위치 로드 실패: 'world' 정보가 없습니다.");
                     continue;
                 }
+                
+                World world = Bukkit.getWorld(worldName);
+                if (world == null) {
+                    Rpg.log.warning("'" + key + "' 스폰 위치 로드 실패: 월드 '" + worldName + "'을(를) 찾을 수 없습니다.");
+                    continue;
+                }
+                
                 double x = section.getDouble(key + ".x");
                 double y = section.getDouble(key + ".y");
                 double z = section.getDouble(key + ".z");
@@ -61,11 +67,14 @@ public class LocationManager {
 
                 spawnLocations.put(key, new Location(world, x, y, z, yaw, pitch));
             }
+            Rpg.log.info(spawnLocations.size() + "개의 스폰 위치를 성공적으로 불러왔습니다.");
+        } else {
+             Rpg.log.warning("'locations.yml' 파일에 'spawn-locations:' 항목이 없습니다. 관리자가 스폰 지점을 설정해야 합니다.");
         }
     }
 
     /**
-     * 새로운 스폰 지점을 locations.yml 파일에 설정(저장)합니다.
+     * 새로운 스폰 지점을 설정할 때도, 각 좌표를 나누어 저장합니다.
      */
     public static void setSpawnLocation(String id, Location loc) {
         String path = "spawn-locations." + id;
@@ -79,9 +88,6 @@ public class LocationManager {
         spawnLocations.put(id, loc); // 메모리에도 즉시 반영
     }
 
-    /**
-     * 등록된 스폰 지점을 삭제합니다.
-     */
     public static boolean removeSpawnLocation(String id) {
         if (!locationsConfig.contains("spawn-locations." + id)) return false;
         locationsConfig.set("spawn-locations." + id, null);
@@ -97,7 +103,20 @@ public class LocationManager {
             e.printStackTrace();
         }
     }
+    
+    // --- 유틸리티 메소드 ---
+    public static FileConfiguration getLocationsConfig() {
+        return locationsConfig;
+    }
 
+    public static Map<String, Location> getSpawnLocations() {
+        return Collections.unmodifiableMap(spawnLocations);
+    }
+
+    public static Location getSpawnLocation(String id) {
+        return spawnLocations.get(id);
+    }
+    
     public static void sendSpawnList(Player player) {
         player.sendMessage("§6--- 등록된 스폰 지점 목록 ---");
         if (spawnLocations.isEmpty()) {
@@ -108,17 +127,5 @@ public class LocationManager {
             player.sendMessage(String.format("§a- %s §7(월드: %s, 좌표: %.1f, %.1f, %.1f)",
                     id, loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ()));
         });
-    }
-
-    /**
-     * [핵심] 메모리에 로드된 모든 스폰 지점의 맵을 반환합니다.
-     * @return 스폰 지점 ID와 Location 객체로 이루어진 Map
-     */
-    public static Map<String, Location> getSpawnLocations() {
-        return Collections.unmodifiableMap(spawnLocations);
-    }
-
-    public static Location getSpawnLocation(String id) {
-        return spawnLocations.get(id);
     }
 }

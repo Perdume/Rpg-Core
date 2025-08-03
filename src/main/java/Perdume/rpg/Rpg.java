@@ -3,10 +3,15 @@ package Perdume.rpg;
 
 import Perdume.rpg.command.IslandCommand;
 import Perdume.rpg.command.SpawnCommand;
+import Perdume.rpg.command.admin.SpawnAdminCommand;
 import Perdume.rpg.config.ConfigManager;
+import Perdume.rpg.config.LocationManager;
 import Perdume.rpg.core.party.PartyCommand;
+import Perdume.rpg.core.player.data.PlayerDataListener;
 import Perdume.rpg.core.player.data.PlayerDataManager;
 import Perdume.rpg.core.player.listener.CombatListener;
+import Perdume.rpg.gamemode.island.listener.IslandSettingsGUIListener;
+import Perdume.rpg.gamemode.island.listener.IslandWorldListener;
 import Perdume.rpg.gamemode.raid.RaidCommand;
 import Perdume.rpg.command.SetReinforceCommand;
 import Perdume.rpg.command.TestCommand;
@@ -15,12 +20,14 @@ import Perdume.rpg.enhancement.listener.ReinforceListener;
 import Perdume.rpg.core.player.listener.AttributeListener;
 import Perdume.rpg.core.player.listener.CraftingListener;
 import Perdume.rpg.core.player.listener.RaidSessionListener;
+import Perdume.rpg.gamemode.raid.RaidInstance;
 import Perdume.rpg.gamemode.raid.listener.BossDeathListener;
 import Perdume.rpg.gamemode.raid.listener.RaidGUIListener;
 import Perdume.rpg.core.reward.RewardCommand;
 import Perdume.rpg.core.reward.listener.RewardClaimListener;
 import Perdume.rpg.core.reward.manager.RewardManager;
 import Perdume.rpg.listener.SpawnGUIListener;
+import Perdume.rpg.listener.WorldListener;
 import Perdume.rpg.system.RaidManager;
 import Perdume.rpg.system.SkyblockManager;
 import Perdume.rpg.world.command.WorldAdminCommand;
@@ -38,7 +45,9 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 
 public final class Rpg extends JavaPlugin implements Listener {
@@ -58,7 +67,6 @@ public final class Rpg extends JavaPlugin implements Listener {
     private RewardManager rewardManager;
     private PlayerDataManager playerDataManager;
     private SkyblockManager skyblockManager;
-    private ConfigManager configManager;
 
     public static Economy econ = null;
 
@@ -67,9 +75,10 @@ public final class Rpg extends JavaPlugin implements Listener {
         instance = this;
         log = this.getLogger();
 
-        // 1. 설정 파일 로드 및 템플릿 월드 준비 (가장 먼저)
+        // [핵심] 1. 설정 및 데이터 관리자를 가장 먼저 초기화합니다.
         this.saveDefaultConfig();
         initializeTemplateWorlds();
+        LocationManager.initialize(this); // 오직 LocationManager만 준비시킵니다.
 
         // 2. 외부 API 연동 (Vault)
         if (!setupEconomy()) {
@@ -90,13 +99,65 @@ public final class Rpg extends JavaPlugin implements Listener {
         log.info("RPG Plugin이 성공적으로 활성화되었습니다.");
     }
 
+    /**
+     * [최종 수정] 플러그인이 비활성화될 때, 모든 데이터를 안전하게 저장하고 세션을 종료합니다.
+     */
     @Override
     public void onDisable() {
+        log.info("플러그인 비활성화를 시작합니다. 모든 데이터를 안전하게 저장합니다...");
+
+        // 1. 모든 보상 데이터를 파일에 저장합니다.
+        if (rewardManager != null) {
+            rewardManager.saveRewards();
+            log.info("- 보상 우편함 데이터를 저장했습니다.");
+        }
+
+        // 2. 모든 맵 수정 세션을 강제로 저장하고 정리합니다.
+        WorldAdminCommand worldAdminCommand = (WorldAdminCommand) getCommand("rpworld").getExecutor();
+        if (worldAdminCommand != null && !WorldAdminCommand.editingPlayers.isEmpty()) {
+            log.info(WorldAdminCommand.editingPlayers.size() + "개의 맵 수정 세션을 강제 저장합니다...");
+            // ConcurrentModificationException 방지를 위해 키 목록의 복사본을 만들어 순회합니다.
+            for (UUID uuid : new ArrayList<>(WorldAdminCommand.editingPlayers.keySet())) {
+                Player p = getServer().getPlayer(uuid);
+                if (p != null) {
+                    // 저장 후 콜백에서 로그를 남기도록 할 수 있으나, 여기서는 즉시 처리합니다.
+                    worldAdminCommand.handleSave(p, (success) -> {
+                        if(success) {
+                            log.info("- " + p.getName() + "님의 맵 수정 작업을 저장했습니다.");
+                        } else {
+                            log.warning("- " + p.getName() + "님의 맵 수정 작업 저장에 실패했습니다.");
+                        }
+                    });
+                }
+            }
+        }
+
+        // 3. 현재 접속 중인 모든 플레이어의 데이터를 저장합니다.
         if (playerDataManager != null) {
+            log.info(getServer().getOnlinePlayers().size() + "명의 온라인 플레이어 데이터를 저장합니다...");
             for (Player player : getServer().getOnlinePlayers()) {
                 playerDataManager.savePlayerDataOnQuit(player);
             }
         }
+
+        // 4. [핵심] 현재 로드된 모든 스카이블럭 섬을 저장하고 언로드합니다.
+        if (skyblockManager != null && !skyblockManager.getActiveIslands().isEmpty()) {
+            log.info(skyblockManager.getActiveIslands().size() + "개의 활성화된 섬을 저장합니다...");
+            // activeIslands 맵을 직접 수정하면 오류가 발생하므로, 키 목록의 복사본을 만들어 순회합니다.
+            for (String islandId : new ArrayList<>(skyblockManager.getActiveIslands().keySet())) {
+                skyblockManager.unloadIsland(islandId);
+            }
+        }
+
+        // 5. 모든 레이드 인스턴스를 강제로 종료합니다.
+        if (raidManager != null && !raidManager.getActiveRaids().isEmpty()) {
+            log.info(raidManager.getActiveRaids().size() + "개의 레이드를 강제 종료합니다...");
+            // activeRaids 리스트를 직접 수정하면 오류가 발생하므로, 복사본을 만들어 순회합니다.
+            for (RaidInstance instance : new ArrayList<>(raidManager.getActiveRaids())) {
+                instance.end(false); // 실패 처리로 강제 종료
+            }
+        }
+
         log.info("RPG Plugin이 비활성화되었습니다.");
     }
 
@@ -158,7 +219,6 @@ public final class Rpg extends JavaPlugin implements Listener {
         this.combatListener = new CombatListener(this);
         this.rewardManager = new RewardManager(this);
         this.skyblockManager = new SkyblockManager(this);
-        this.configManager = new ConfigManager(this);
     }
 
     private void cleanupTemporaryWorlds() {
@@ -215,6 +275,9 @@ public final class Rpg extends JavaPlugin implements Listener {
         getCommand("스폰").setExecutor(new SpawnCommand()); // /스폰 명령어 등록
         getServer().getPluginManager().registerEvents(new SpawnGUIListener(), this); // GUI 리스너 등록
 
+        getCommand("spawnset").setExecutor(new SpawnAdminCommand()); // [추가]
+        getServer().getPluginManager().registerEvents(new WorldListener(this), this); // [추가]
+
         // --- 테스트 시스템 ---
         getCommand("rpgtest").setExecutor(new TestCommand(this));
 
@@ -222,6 +285,9 @@ public final class Rpg extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(this.attributeListener, this);
         getServer().getPluginManager().registerEvents(this.combatListener, this);
         getServer().getPluginManager().registerEvents(new CraftingListener(), this);
+        getServer().getPluginManager().registerEvents(new IslandSettingsGUIListener(this), this); // [추가]
+        getServer().getPluginManager().registerEvents(new PlayerDataListener(this), this);
+        getServer().getPluginManager().registerEvents(new IslandWorldListener(this), this); // [추가]
         // getServer().getPluginManager().registerEvents(new GlobalRespawnListener(this), this); // 필요 시 활성화
 
         // --- ISLAND ---
@@ -244,5 +310,4 @@ public final class Rpg extends JavaPlugin implements Listener {
     public SkyblockManager getSkyblockManager() {
         return this.skyblockManager;
     }
-    public ConfigManager getConfigManager() { return configManager; }
 }

@@ -17,26 +17,32 @@ public class ConfigManager {
     private FileConfiguration locationsConfig;
     private File locationsFile;
 
-    // 로드된 위치 정보를 메모리에 저장해두어, 필요할 때마다 빠르게 사용
     private final Map<String, Location> spawnLocations = new HashMap<>();
 
     public ConfigManager(Rpg plugin) {
         this.plugin = plugin;
-        loadLocations();
     }
 
     public void loadLocations() {
         locationsFile = new File(plugin.getDataFolder(), "locations.yml");
         if (!locationsFile.exists()) {
-            plugin.saveResource("locations.yml", false); // jar 내의 기본 파일을 복사
+            plugin.saveResource("locations.yml", false);
         }
         locationsConfig = YamlConfiguration.loadConfiguration(locationsFile);
 
-        // 'spawn-locations' 섹션을 읽어와 메모리에 저장
+        spawnLocations.clear();
         ConfigurationSection section = locationsConfig.getConfigurationSection("spawn-locations");
         if (section != null) {
             for (String key : section.getKeys(false)) {
-                String[] coords = section.getString(key + ".coordinates").split(", ");
+
+                // [핵심] coordinates 항목이 존재하는지 먼저 안전하게 확인합니다.
+                String coordsString = section.getString(key + ".coordinates");
+                if (coordsString == null || coordsString.isEmpty()) {
+                    Rpg.log.warning("'" + key + "' 스폰 위치 로드 실패: coordinates 정보가 없습니다.");
+                    continue; // 이 스폰 지점은 건너뛰고 다음으로 넘어감
+                }
+
+                String[] coords = coordsString.split(", ");
                 if (coords.length == 6) {
                     Location loc = new Location(
                             Bukkit.getWorld(coords[0]),
@@ -47,6 +53,8 @@ public class ConfigManager {
                             Float.parseFloat(coords[5])
                     );
                     spawnLocations.put(key, loc);
+                } else {
+                    Rpg.log.warning("'" + key + "' 스폰 위치 로드 실패: coordinates 형식이 잘못되었습니다.");
                 }
             }
             Rpg.log.info(spawnLocations.size() + "개의 스폰 위치를 불러왔습니다.");
