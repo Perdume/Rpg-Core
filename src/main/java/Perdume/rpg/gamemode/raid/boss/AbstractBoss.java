@@ -45,12 +45,9 @@ public abstract class AbstractBoss implements Boss {
     }
 
     @Override
-    public void damage(double amount, double armorIgnore) {
+    public void damage(double amount) {
         if (isDead()) return;
-        double effectiveDefense = this.defense * (1.0 - Math.min(1.0, armorIgnore));
-        double defenseReduction = effectiveDefense / (effectiveDefense + 1000);
-        double finalDamage = amount * (1.0 - defenseReduction);
-        this.currentHealth -= finalDamage;
+        this.currentHealth -= amount;
         if (this.currentHealth < 0) {
             this.currentHealth = 0;
         }

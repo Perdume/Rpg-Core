@@ -3,36 +3,34 @@ package Perdume.rpg;
 
 import Perdume.rpg.command.IslandCommand;
 import Perdume.rpg.command.SpawnCommand;
+import Perdume.rpg.command.TestCommand;
 import Perdume.rpg.command.admin.SpawnAdminCommand;
-import Perdume.rpg.config.ConfigManager;
 import Perdume.rpg.config.LocationManager;
 import Perdume.rpg.core.party.PartyCommand;
 import Perdume.rpg.core.player.data.PlayerDataListener;
 import Perdume.rpg.core.player.data.PlayerDataManager;
 import Perdume.rpg.core.player.listener.CombatListener;
-import Perdume.rpg.gamemode.island.listener.IslandSettingsGUIListener;
-import Perdume.rpg.gamemode.island.listener.IslandWorldListener;
-import Perdume.rpg.gamemode.raid.RaidCommand;
-import Perdume.rpg.command.SetReinforceCommand;
-import Perdume.rpg.command.TestCommand;
-import Perdume.rpg.enhancement.command.ReinforceCommand;
-import Perdume.rpg.enhancement.listener.ReinforceListener;
-import Perdume.rpg.core.player.listener.AttributeListener;
-import Perdume.rpg.core.player.listener.CraftingListener;
 import Perdume.rpg.core.player.listener.RaidSessionListener;
-import Perdume.rpg.gamemode.raid.RaidInstance;
-import Perdume.rpg.gamemode.raid.listener.BossDeathListener;
-import Perdume.rpg.gamemode.raid.listener.RaidGUIListener;
 import Perdume.rpg.core.reward.RewardCommand;
 import Perdume.rpg.core.reward.listener.RewardClaimListener;
 import Perdume.rpg.core.reward.manager.RewardManager;
+import Perdume.rpg.gamemode.field.command.FieldAdminCommand;
+import Perdume.rpg.gamemode.field.command.SpawnerCommand;
+import Perdume.rpg.gamemode.island.listener.CobblestoneGeneratorListener;
+import Perdume.rpg.gamemode.island.listener.IslandSettingsGUIListener;
+import Perdume.rpg.gamemode.island.listener.IslandWorldListener;
+import Perdume.rpg.gamemode.raid.RaidCommand;
+import Perdume.rpg.gamemode.raid.RaidInstance;
+import Perdume.rpg.gamemode.raid.listener.BossDeathListener;
+import Perdume.rpg.gamemode.raid.listener.RaidGUIListener;
+import Perdume.rpg.listener.FieldInstanceListener;
+import Perdume.rpg.listener.PortalListener;
 import Perdume.rpg.listener.SpawnGUIListener;
 import Perdume.rpg.listener.WorldListener;
-import Perdume.rpg.system.RaidManager;
-import Perdume.rpg.system.SkyblockManager;
+import Perdume.rpg.system.*;
+import Perdume.rpg.world.WorldManager;
 import Perdume.rpg.world.command.WorldAdminCommand;
 import Perdume.rpg.world.gui.EditSessionListener;
-import Perdume.rpg.world.WorldManager;
 import Perdume.rpg.world.task.EditWorldCleanupTask;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -62,11 +60,12 @@ public final class Rpg extends JavaPlugin implements Listener {
 
     // --- 핵심 시스템 ---
     private RaidManager raidManager;
-    private AttributeListener attributeListener;
     private CombatListener combatListener;
     private RewardManager rewardManager;
     private PlayerDataManager playerDataManager;
     private SkyblockManager skyblockManager;
+    private FieldManager fieldManager;
+    private PortalManager portalManager;
 
     public static Economy econ = null;
 
@@ -95,6 +94,8 @@ public final class Rpg extends JavaPlugin implements Listener {
 
         // 4. 모든 명령어 및 리스너 등록
         registerCommandsAndSystems();
+
+        new PortalParticleTask(this).runTaskTimer(this, 0L, 1L);
 
         log.info("RPG Plugin이 성공적으로 활성화되었습니다.");
     }
@@ -215,10 +216,11 @@ public final class Rpg extends JavaPlugin implements Listener {
 
     private void initializeSystems() {
         this.raidManager = new RaidManager(this);
-        this.attributeListener = new AttributeListener(this);
         this.combatListener = new CombatListener(this);
         this.rewardManager = new RewardManager(this);
         this.skyblockManager = new SkyblockManager(this);
+        this.fieldManager = new FieldManager(this); // [신규] FieldManager 초기화
+        this.portalManager = new PortalManager(this);
     }
 
     private void cleanupTemporaryWorlds() {
@@ -249,10 +251,6 @@ public final class Rpg extends JavaPlugin implements Listener {
      * 각 시스템별로 구역을 나누어 가독성과 유지보수성을 높였습니다.
      */
     private void registerCommandsAndSystems() {
-        // --- 강화 시스템 ---
-        getCommand("강화").setExecutor(new ReinforceCommand());
-        getCommand("setreinforce").setExecutor(new SetReinforceCommand());
-        getServer().getPluginManager().registerEvents(new ReinforceListener(this), this);
 
         // --- 파티 및 레이드 시스템 ---
         getCommand("party").setExecutor(new PartyCommand());
@@ -281,13 +279,18 @@ public final class Rpg extends JavaPlugin implements Listener {
         // --- 테스트 시스템 ---
         getCommand("rpgtest").setExecutor(new TestCommand(this));
 
+        getCommand("fieldadmin").setExecutor(new FieldAdminCommand(this)); // [신규]
+
+        getCommand("스포너분석").setExecutor(new SpawnerCommand());
+
         // --- 핵심 리스너 등록 ---
-        getServer().getPluginManager().registerEvents(this.attributeListener, this);
         getServer().getPluginManager().registerEvents(this.combatListener, this);
-        getServer().getPluginManager().registerEvents(new CraftingListener(), this);
         getServer().getPluginManager().registerEvents(new IslandSettingsGUIListener(this), this); // [추가]
         getServer().getPluginManager().registerEvents(new PlayerDataListener(this), this);
         getServer().getPluginManager().registerEvents(new IslandWorldListener(this), this); // [추가]
+        getServer().getPluginManager().registerEvents(new CobblestoneGeneratorListener(this), this); // [추가]
+        getServer().getPluginManager().registerEvents(new PortalListener(this), this); // [신규]
+        getServer().getPluginManager().registerEvents(new FieldInstanceListener(this), this); // [신규]
         // getServer().getPluginManager().registerEvents(new GlobalRespawnListener(this), this); // 필요 시 활성화
 
         // --- ISLAND ---
@@ -304,10 +307,11 @@ public final class Rpg extends JavaPlugin implements Listener {
     // --- Getter 메소드 ---
     public static Rpg getInstance() { return instance; }
     public RaidManager getRaidManager() { return raidManager; }
-    public AttributeListener getAttributeListener() { return attributeListener; }
     public CombatListener getCombatListener() {return combatListener;}
     public RewardManager getRewardManager() {return rewardManager;}
     public SkyblockManager getSkyblockManager() {
         return this.skyblockManager;
     }
+    public FieldManager getFieldManager() {return this.fieldManager;}
+    public PortalManager getPortalManager() {return this.portalManager;}
 }

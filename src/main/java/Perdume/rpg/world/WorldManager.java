@@ -133,17 +133,19 @@ public class WorldManager {
      * @param callback 월드 로드가 완료된 후 실행될 작업
      */
     public static void copyAndLoadWorld(String newWorldName, String templateName, Consumer<World> callback) {
+        Rpg plugin = Rpg.getInstance();
         new BukkitRunnable() {
             @Override
             public void run() {
-                File templateFolder = new File(Rpg.getInstance().getDataFolder(), "worlds/" + templateName);
+                // [핵심] 이제 템플릿을 'worlds/island/' 폴더 안에서만 찾습니다.
+                File templateFolder = new File(new File(plugin.getDataFolder(), "worlds/island"), templateName);
                 File instanceFolder = new File(Bukkit.getWorldContainer(), newWorldName);
 
                 if (!templateFolder.exists() || !templateFolder.isDirectory()) {
                     new BukkitRunnable() {
                         @Override
                         public void run() { callback.accept(null); }
-                    }.runTask(Rpg.getInstance());
+                    }.runTask(plugin);
                     return;
                 }
 
@@ -152,15 +154,13 @@ public class WorldManager {
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        // [핵심] 복사된 월드를 로드할 때도, 만약의 사태에 대비해 공허 생성기를 지정합니다.
                         WorldCreator wc = new WorldCreator(newWorldName);
                         wc.generator("VoidGen");
-
                         callback.accept(wc.createWorld());
                     }
-                }.runTask(Rpg.getInstance());
+                }.runTask(plugin);
             }
-        }.runTaskAsynchronously(Rpg.getInstance());
+        }.runTaskAsynchronously(plugin);
     }
 
     /**
@@ -196,7 +196,7 @@ public class WorldManager {
     }
 
     // --- 내부 유틸리티 메소드 (폴더 복사 및 삭제) ---
-    private static void copyWorldFolder(File source, File target) {
+    public static void copyWorldFolder(File source, File target) {
         try {
             if (source.isDirectory()) {
                 if (!target.exists()) target.mkdirs();

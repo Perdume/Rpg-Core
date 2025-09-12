@@ -34,8 +34,8 @@ public class AbyssalSlave extends AbstractBoss {
     }
 
     @Override
-    public void damage(double amount, double armorIgnore) {
-        super.damage(amount, armorIgnore);
+    public void damage(double amount) {
+        super.damage(amount);
         updateHealthBar();
         if (isDead() && customEntity != null && customEntity.isAlive()) {
             customEntity.setHealth(0);

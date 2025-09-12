@@ -39,7 +39,7 @@ public class RaidManager {
             return;
         }
 
-        String instanceWorldName = "Raid--RUN--" + Integer.hashCode(nextRaidId++);
+        String instanceWorldName = "Raid--" + templateWorldName + "--" + nextRaidId++;
 
         WorldManager.copyAndLoadWorld(instanceWorldName, templateWorldName, "raid", (newWorld) -> {
             if (newWorld == null) {

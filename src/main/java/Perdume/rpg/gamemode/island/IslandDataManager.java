@@ -1,7 +1,6 @@
 package Perdume.rpg.gamemode.island;
 
 import Perdume.rpg.Rpg;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -36,55 +35,57 @@ public class IslandDataManager {
         config.set("owner", island.getOwner().toString());
         config.set("members", island.getMembers().stream().map(UUID::toString).collect(Collectors.toList()));
 
+        // [핵심] Location 객체를 통째로 저장하는 대신, 각 정보를 분리하여 저장합니다.
         if (island.getSpawnLocation() != null) {
-            config.set("spawn-location", island.getSpawnLocation());
+            Location loc = island.getSpawnLocation();
+            config.set("spawn-location.world", loc.getWorld().getName());
+            config.set("spawn-location.x", loc.getX());
+            config.set("spawn-location.y", loc.getY());
+            config.set("spawn-location.z", loc.getZ());
+            config.set("spawn-location.yaw", loc.getYaw());
+            config.set("spawn-location.pitch", loc.getPitch());
         }
 
         try {
             config.save(islandFile);
         } catch (IOException e) {
-            Rpg.log.severe("섬 데이터 저장 실패: " + island.getId());
             e.printStackTrace();
         }
     }
 
-    /**
-     * [핵심 수정] 파일에서 섬 ID를 기반으로 Island 객체를 불러옵니다.
-     * @param islandId 불러올 섬의 고유 ID
-     * @return 복원된 Island 객체, 파일이 없으면 null
-     */
     public Island loadIsland(String islandId) {
         File islandFile = new File(dataFolder, islandId + ".yml");
-        if (!islandFile.exists()) {
-            return null;
-        }
+        if (!islandFile.exists()) return null;
 
         FileConfiguration config = YamlConfiguration.loadConfiguration(islandFile);
 
         try {
             UUID owner = UUID.fromString(config.getString("owner"));
-            List<UUID> members = config.getStringList("members").stream()
-                    .map(UUID::fromString)
-                    .collect(Collectors.toList());
+            List<UUID> members = config.getStringList("members").stream().map(UUID::fromString).collect(Collectors.toList());
 
-            // 1. 파일에서 Location 객체를 불러옵니다.
-            Location spawnLocation = config.getLocation("spawn-location");
+            Location spawnLocation = null;
+            // [핵심] spawn-location 섹션이 있을 때만 좌표를 읽어옵니다.
+            if (config.isConfigurationSection("spawn-location")) {
+                // 월드 이름만 먼저 읽어옵니다. 월드 객체는 나중에 SkyblockManager가 채워 넣습니다.
+                String worldName = config.getString("spawn-location.world");
+                double x = config.getDouble("spawn-location.x");
+                double y = config.getDouble("spawn-location.y");
+                double z = config.getDouble("spawn-location.z");
+                float yaw = (float) config.getDouble("spawn-location.yaw");
+                float pitch = (float) config.getDouble("spawn-location.pitch");
 
-            // 2. [핵심] 만약 불러온 값이 null이라면 (파일에 정보가 없다면),
-            //    임시로 메인 월드를 기준으로 한 기본 위치를 생성합니다.
-            if (spawnLocation == null) {
-                // 이 월드 정보는 나중에 SkyblockManager가 실제 섬 월드로 교체해 줄 것입니다.
-                spawnLocation = new Location(Bukkit.getWorlds().get(0), 0.5, 65, 0.5);
+                // 월드를 null로 둔 채 Location 객체를 생성합니다.
+                spawnLocation = new Location(null, x, y, z, yaw, pitch);
             }
 
             return new Island(islandId, owner, members, spawnLocation);
 
         } catch (Exception e) {
-            Rpg.log.severe("섬 데이터 불러오기 실패: " + islandId);
             e.printStackTrace();
             return null;
         }
     }
+
 
     public void deleteIslandData(String islandId) {
         File islandFile = new File(dataFolder, islandId + ".yml");

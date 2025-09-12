@@ -7,18 +7,14 @@ import Perdume.rpg.gamemode.island.Island;
 import Perdume.rpg.gamemode.island.IslandDataManager;
 import Perdume.rpg.world.WorldManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class SkyblockManager {
@@ -77,21 +73,21 @@ public class SkyblockManager {
      * 모든 판단은 '플레이어 데이터'를 기준으로 시작합니다.
      */
     public void enterMyIsland(Player player) {
-        // 1. 플레이어의 영구 데이터에서 섬 ID를 가져옵니다.
         String islandId = playerDataManager.getPlayerData(player).getIslandId();
         if (islandId == null || islandId.isEmpty()) {
             player.sendMessage("§c아직 당신의 섬이 없습니다. /섬 생성 명령어로 만들어주세요.");
             return;
         }
 
-        // 2. 해당 ID의 섬이 현재 메모리에 로드되어 있는지 확인합니다.
+        Rpg.log.info("[디버그] " + player.getName() + "님이 섬(" + islandId + ") 입장을 시도합니다.");
+
         Island island = activeIslands.get(islandId);
         if (island != null && island.getWorld() != null) {
-            // 2-a. 이미 로드되어 있다면, 즉시 텔레포트합니다.
+            Rpg.log.info("[디버그] 섬(" + islandId + ")은(는) 이미 로드되어 있어, 즉시 텔레포트합니다.");
             player.teleport(island.getSpawnLocation() != null ? island.getSpawnLocation() : island.getWorld().getSpawnLocation());
         } else {
-            // 2-b. 로드되어 있지 않다면, 로딩 절차를 시작합니다.
             player.sendMessage("§e당신의 섬을 불러오는 중입니다...");
+            Rpg.log.info("[디버그] 섬(" + islandId + ")이(가) 언로드 상태이므로, 로딩 절차를 시작합니다.");
             loadAndEnterIsland(islandId, player);
         }
     }
@@ -100,31 +96,39 @@ public class SkyblockManager {
      * [핵심 수정] 파일에서 섬을 로드하고 플레이어를 입장시키는 절차를 통합합니다.
      */
     private void loadAndEnterIsland(String islandId, Player player) {
-        // 1. 섬 데이터 관리자를 통해 파일에서 섬 데이터를 불러옵니다.
         Island island = islandDataManager.loadIsland(islandId);
         if (island == null) {
-            player.sendMessage("§c섬 데이터를 불러오는 데 실패했습니다. 데이터가 손상되었을 수 있습니다.");
-            // 데이터 파일은 있는데 로드에 실패한 경우, 플레이어의 섬 정보를 초기화하여 오류를 막습니다.
-            playerDataManager.getPlayerData(player).setIslandId(null);
+            player.sendMessage("§c섬 데이터를 불러오는 데 실패했습니다.");
             return;
         }
 
-        // 2. 불러온 섬을 '활성화된 섬' 목록에 등록합니다.
         activeIslands.put(islandId, island);
 
-        // 3. 월드 매니저를 통해 섬 월드를 로드합니다.
         WorldManager.copyAndLoadWorld(island.getWorldName(), island.getTemplateFolderName(), "island", (world) -> {
             if (world != null) {
                 island.setWorld(world);
-                player.teleport(island.getSpawnLocation() != null ? island.getSpawnLocation() : world.getSpawnLocation());
+
+                // --- [핵심 수정] ---
+                // 1. 섬의 스폰 위치(주소)를 가져옵니다.
+                Location spawnLocation = island.getSpawnLocation();
+
+                // [핵심] 만약 저장된 스폰 위치가 있다면, 그 위치의 월드 정보를
+                // 우리가 방금 새로 로드한 'world'로 갱신합니다.
+                if (spawnLocation != null) {
+                    spawnLocation.setWorld(world);
+                } else {
+                    // 저장된 스폰 위치가 없다면, 월드의 기본 스폰을 사용합니다.
+                    spawnLocation = world.getSpawnLocation();
+                }
+
+                // 3. 이제 '주소'와 '집'이 일치하므로, 안전하게 텔레포트합니다.
+                player.teleport(spawnLocation);
             } else {
                 player.sendMessage("§c섬 월드를 불러오는 데 실패했습니다.");
-                // 월드 로드 실패 시, 활성화 목록에서 다시 제거
                 activeIslands.remove(islandId);
             }
         });
     }
-
     /**
      * 새로운 섬을 생성합니다.
      */

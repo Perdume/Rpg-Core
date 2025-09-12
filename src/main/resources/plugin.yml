@@ -7,11 +7,6 @@ author: Perdume
 depend: [Vault] # 이 줄을 추가합니다.
 
 commands:
-  # [수정] 강화
-  강화:
-    description: 강화 시스템을 엽니다.
-    aliases: [reinforce, enf]
-
   # [수정] 보상
   보상:
     description: 보상 수령함을 엽니다.
@@ -33,7 +28,11 @@ commands:
     aliases: [island, is]
   스폰:
     description: 스폰 명령어
-    aliases: [spawn, 넴주]
+    aliases: [spawn, 넴주, lobby, 로비, l]
+  스포너분석:
+    description: 스포너
+    aliases: [ spawneranalyze ]
+    permission: rpg.admin
 
   # 관리자용 명령어는 편의를 위해 영어 유지
   rpworld:
@@ -44,10 +43,10 @@ commands:
     description: RPG 시스템을 테스트합니다.
     aliases: [rt]
     permission: rpg.admin
-  setreinforce:
-    description: 아이템의 강화 레벨을 설정합니다.
-    aliases: [sr]
-    permission: rpg.admin.setreinforce
   spawnset:
     description: unknown
     permission: rpg.admin.spawnset
+  fieldadmin:
+    description: 사냥터(필드)를 디버그하고 관리합니다.
+    aliases: [fa]
+    permission: rpg.admin.field

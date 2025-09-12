@@ -128,4 +128,9 @@ public class LocationManager {
                     id, loc.getWorld().getName(), loc.getX(), loc.getY(), loc.getZ()));
         });
     }
+    public void reload() {
+        locationsConfig = YamlConfiguration.loadConfiguration(locationsFile);
+        loadLocationsFromConfig();
+        Rpg.log.info("'locations.yml' 파일을 다시 불러왔습니다.");
+    }
 }

@@ -1,0 +1,13 @@
+# RPG 서버의 모든 포탈 정보를 저장하는 파일입니다.
+
+portals:
+  to_orc_field: # 이 포탈의 고유 ID
+    # 포탈의 범위 (두 지점의 월드는 동일해야 함)
+    pos1: "world, 100, 64, 200" # world, x, y, z
+    pos2: "world, 110, 70, 210"
+    # 이동할 목적지 월드
+    tpworld: "OrcValley" # 사냥터 월드 템플릿 이름
+  to_elf_forest:
+    pos1: "world, -50, 68, 300"
+    pos2: "world, -60, 75, 310"
+    tpworld: "ElfForest"

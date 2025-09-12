@@ -99,6 +99,7 @@ public class TestCommand implements CommandExecutor {
         dummy.setAI(false);
         dummy.setGravity(false);
         dummy.setInvulnerable(true);
+        dummy.setSilent(true);
 
         TestDummyManager.addDummy(dummy.getUniqueId());
     }

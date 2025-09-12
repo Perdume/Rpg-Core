@@ -3,17 +3,20 @@ package Perdume.rpg.gamemode.raid.boss;
 
 import Perdume.rpg.Rpg;
 import Perdume.rpg.core.player.listener.CombatListener;
+import Perdume.rpg.core.reward.manager.RewardManager;
+import Perdume.rpg.core.util.ItemFactory;
 import Perdume.rpg.gamemode.raid.RaidInstance;
 import Perdume.rpg.gamemode.raid.ai.EntityGolemKing;
 import Perdume.rpg.gamemode.raid.mob.ShieldGolem;
-import Perdume.rpg.core.reward.manager.RewardManager;
-import Perdume.rpg.core.util.ItemFactory;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
-import org.bukkit.entity.*;
+import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
@@ -21,7 +24,10 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class GolemKing extends AbstractBoss implements Listener {
@@ -152,19 +158,17 @@ public class GolemKing extends AbstractBoss implements Listener {
         event.setCancelled(true);
         CombatListener combatListener = plugin.getCombatListener();
         if (combatListener != null) {
-            CombatListener.DamageResult finalDamage = combatListener.calculatePlayerAttackDamage(attacker, event.getDamage());
-            double armorIgnore = combatListener.getPlayerArmorIgnore(attacker);
-            this.damage(finalDamage.getDamage(), armorIgnore);
+            this.damage(event.getFinalDamage());
         }
     }
 
     @Override
-    public void damage(double amount, double armorIgnore) {
+    public void damage(double amount) {
         if (isShieldActive || isDead()) {
             return;
         }
 
-        super.damage(amount, armorIgnore); // AbstractBoss의 대미지 계산 실행
+        super.damage(amount); // AbstractBoss의 대미지 계산 실행
 
         if (customEntity != null) {
             customEntity.updateHealthBar(this.currentHealth, this.maxHealth);

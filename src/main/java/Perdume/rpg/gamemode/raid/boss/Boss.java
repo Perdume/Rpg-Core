@@ -27,7 +27,7 @@ public interface Boss {
     String getBossId();
 
     // --- 행동 (Actions) ---
-    void damage(double amount, double armorIgnore);
+    void damage(double amount);
 
     void registerSelf(RaidInstance raidInstance);
     int getCurrentPhase();

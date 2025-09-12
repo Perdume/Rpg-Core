@@ -86,9 +86,6 @@ public class RaidSessionListener implements Listener {
             // 이 플레이어는 이제 레이드 멤버가 아니지만, RaidInstance에는 귀환 위치 정보가 남아있음
             player.sendMessage("§c레이드 도중 이탈하여, 원래 위치로 귀환합니다.");
 
-            // 즉시 원래 위치로 귀환
-            plugin.getAttributeListener().removeRaidAttributes(player);
-
             player.setGameMode(GameMode.SURVIVAL);
             TeleportUtil.returnPlayerToSafety(player, raidInstance.getOriginalLocation(player));
         });

@@ -4,10 +4,10 @@ import Perdume.rpg.Rpg;
 import Perdume.rpg.core.party.Party;
 import Perdume.rpg.core.party.PartyManager;
 import Perdume.rpg.core.player.data.PlayerDataManager;
+import Perdume.rpg.core.util.TeleportUtil;
 import Perdume.rpg.gamemode.raid.boss.Boss;
 import Perdume.rpg.system.RaidErrorHandler;
 import Perdume.rpg.system.RaidManager;
-import Perdume.rpg.core.util.TeleportUtil;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.boss.BarColor;
@@ -135,9 +135,6 @@ public class RaidInstance {
         // 1. 보스 소환
         Location bossSpawn = new Location(raidWorld, 0.5, 65, 0.5);
         this.boss.spawn(this, bossSpawn);
-
-        // 2. 플레이어 스탯 적용
-        getOnlinePlayers().forEach(p -> plugin.getAttributeListener().applyRaidAttributes(p));
 
         // 3. 메인 게임 타이머 시작
         this.gameTimer = new BukkitRunnable() {
@@ -347,7 +344,6 @@ public class RaidInstance {
                 for (UUID uuid : participants.keySet()) {
                     Player p = plugin.getServer().getPlayer(uuid);
                     if (p != null) {
-                        plugin.getAttributeListener().removeRaidAttributes(p);
                         p.setGameMode(GameMode.SURVIVAL);
                         TeleportUtil.returnPlayerToSafety(p, participants.get(uuid));
                     }

@@ -23,10 +23,6 @@ repositories {
         url = uri("https://repo.codemc.io/repository/maven-public/")
     }
     maven {
-        name = "bentoboxworld"
-        url = uri("https://repo.codemc.org/repository/bentoboxworld/")
-    }
-    maven {
         name = "matteodev"
         url = uri("https://maven.devs.beer/")
     }
@@ -34,6 +30,7 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://jitpack.io")
     maven("https://mvn.mythiccraft.io/repository/maven-public/")
+    maven("https://mvn.lumine.io/repository/maven-public/")
 }
 
 dependencies {
@@ -42,13 +39,13 @@ dependencies {
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit", module = "bukkit")
     }
-    compileOnly("world.bentobox:bentobox:3.0.1-SNAPSHOT")
     compileOnly("dev.aurelium:auraskills-api-bukkit:2.3.5")
-    compileOnly("me.pikamug.quests:quests-core:5.2.5")
     compileOnly("dev.lone:api-itemsadder:4.0.12")
     compileOnly("net.citizensnpcs:citizens-api:2.0.31-SNAPSHOT") {
         exclude(group = "*", module = "*")
     }
+    compileOnly("io.lumine:Mythic-Dist:5.6.1")
+    compileOnly("com.willfp:eco:6.49.0")
 }
 
 // Shadow JAR 설정
