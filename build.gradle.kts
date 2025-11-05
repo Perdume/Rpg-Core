@@ -34,12 +34,12 @@ repositories {
 }
 
 dependencies {
-    paperweight.paperDevBundle("1.21.7-R0.1-SNAPSHOT") // 1.21.x 버전의 Paper 서버 사용
+    paperweight.paperDevBundle("1.21.8-R0.1-SNAPSHOT") // 1.21.x 버전의 Paper 서버 사용
     // [핵심] VaultAPI에서 오래된 bukkit 의존성을 제외하여 충돌 해결
     compileOnly("com.github.MilkBowl:VaultAPI:1.7") {
         exclude(group = "org.bukkit", module = "bukkit")
     }
-    compileOnly("dev.aurelium:auraskills-api-bukkit:2.3.5")
+    compileOnly("dev.aurelium:auraskills-api-bukkit:2.2.4")
     compileOnly("dev.lone:api-itemsadder:4.0.12")
     compileOnly("net.citizensnpcs:citizens-api:2.0.31-SNAPSHOT") {
         exclude(group = "*", module = "*")

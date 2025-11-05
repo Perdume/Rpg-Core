@@ -257,8 +257,8 @@ public class GolemKing extends AbstractBoss implements Listener {
             econ.depositPlayer(player, goldPerPlayer);
             player.sendMessage(String.format("§a[보상] §f%,.0f 골드를 획득했습니다.", goldPerPlayer));
             int essenceAmount = ThreadLocalRandom.current().nextInt(minEssence, maxEssence + 1);
-            ItemStack bossEssence = ItemFactory.createBossEssence(essenceAmount);
-            rewardManager.addReward(player, bossEssence);
+//            ItemStack bossEssence = ItemFactory.createBossEssence(essenceAmount);
+//            rewardManager.addReward(player, bossEssence);
         }
 
         // --- 기존 로직 ---

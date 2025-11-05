@@ -331,7 +331,7 @@ public class RaidInstance {
             PlayerDataManager dataManager = plugin.getPlayerDataManager();
             for (UUID uuid : participants.keySet()) {
                 Player p = Bukkit.getPlayer(uuid);
-                if (p != null) dataManager.recordBossClear(p, boss.getBossId());
+//                if (p != null) dataManager.recordBossClear(p, boss.getBossId());
             }
         }
 

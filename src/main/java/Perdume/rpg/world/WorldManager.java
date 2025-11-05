@@ -194,6 +194,35 @@ public class WorldManager {
             }
         }.runTaskAsynchronously(Rpg.getInstance());
     }
+    
+    /**
+     * [추가] 서버 종료 시 사용될 동기 버전의 템플릿 저장 메소드입니다.
+     * BukkitRunnable을 사용하지 않고 메인 스레드에서 직접 파일 I/O를 수행합니다.
+     * onDisable에서 발생하는 오류를 해결하기 위해 꼭 필요합니다.
+     */
+    public static boolean saveAndOverwriteTemplateSync(World editWorld, String templateName, String type) {
+        if (editWorld == null) {
+            return false;
+        }
+        String editWorldName = editWorld.getName();
+        File editWorldFolder = editWorld.getWorldFolder();
+        File templateFolder = new File(Rpg.getInstance().getDataFolder(), "worlds/" + type + "/" + templateName);
+
+        // 플레이어를 월드 밖으로 이동시킵니다.
+        editWorld.getPlayers().forEach(p -> p.teleport(Bukkit.getWorlds().get(0).getSpawnLocation()));
+
+        if (!Bukkit.unloadWorld(editWorld, true)) {
+            Rpg.log.severe("맵 저장 실패 (Sync): 수정용 월드 '" + editWorldName + "' 언로드에 실패했습니다.");
+            return false;
+        }
+
+        // 비동기 작업 없이 직접 파일 I/O를 실행합니다.
+        deleteWorldFolder(templateFolder);
+        copyWorldFolder(editWorldFolder, templateFolder);
+        deleteWorldFolder(editWorldFolder);
+
+        return true;
+    }
 
     // --- 내부 유틸리티 메소드 (폴더 복사 및 삭제) ---
     public static void copyWorldFolder(File source, File target) {
@@ -237,3 +266,4 @@ public class WorldManager {
         path.delete();
     }
 }
+

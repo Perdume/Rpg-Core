@@ -46,14 +46,14 @@ public class RaidGUIListener implements Listener {
         String bossId = ChatColor.stripColor(clickedItem.getItemMeta().getDisplayName());
         // --- 2. [핵심] 1일 1클리어 제한 확인 ---
         PlayerDataManager dataManager = plugin.getPlayerDataManager();
-        for (Player member : party.getMembers()) {
-            if (!dataManager.canClearBoss(member, bossId)) {
-                // 파티원 전체에게 누가 제한에 걸렸는지 알려줌
-                party.broadcast("§c파티원 " + member.getName() + "님은 오늘 이미 '" + bossId + "' 레이드를 클리어하여 입장할 수 없습니다.");
-                player.closeInventory();
-                return;
-            }
-        }
+//        for (Player member : party.getMembers()) {
+//            if (!dataManager.canClearBoss(member, bossId)) {
+//                // 파티원 전체에게 누가 제한에 걸렸는지 알려줌
+//                party.broadcast("§c파티원 " + member.getName() + "님은 오늘 이미 '" + bossId + "' 레이드를 클리어하여 입장할 수 없습니다.");
+//                player.closeInventory();
+//                return;
+//            }
+//        }
         
         player.closeInventory();
         party.broadcast("파티장이 '" + bossId + "' 레이드를 시작합니다!");

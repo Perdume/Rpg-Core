@@ -1,24 +1,24 @@
 package Perdume.rpg;
 
 
-import Perdume.rpg.command.IslandCommand;
-import Perdume.rpg.command.SpawnCommand;
-import Perdume.rpg.command.TestCommand;
+import Perdume.rpg.command.*;
 import Perdume.rpg.command.admin.SpawnAdminCommand;
 import Perdume.rpg.config.LocationManager;
+import Perdume.rpg.core.economy.EconomyManager;
+import Perdume.rpg.core.item.ItemManager;
 import Perdume.rpg.core.party.PartyCommand;
+import Perdume.rpg.core.player.Manager.StatsManager;
 import Perdume.rpg.core.player.data.PlayerDataListener;
 import Perdume.rpg.core.player.data.PlayerDataManager;
 import Perdume.rpg.core.player.listener.CombatListener;
 import Perdume.rpg.core.player.listener.RaidSessionListener;
+import Perdume.rpg.core.player.listener.StatsGUIListener;
 import Perdume.rpg.core.reward.RewardCommand;
 import Perdume.rpg.core.reward.listener.RewardClaimListener;
 import Perdume.rpg.core.reward.manager.RewardManager;
 import Perdume.rpg.gamemode.field.command.FieldAdminCommand;
 import Perdume.rpg.gamemode.field.command.SpawnerCommand;
-import Perdume.rpg.gamemode.island.listener.CobblestoneGeneratorListener;
-import Perdume.rpg.gamemode.island.listener.IslandSettingsGUIListener;
-import Perdume.rpg.gamemode.island.listener.IslandWorldListener;
+import Perdume.rpg.gamemode.island.listener.*;
 import Perdume.rpg.gamemode.raid.RaidCommand;
 import Perdume.rpg.gamemode.raid.RaidInstance;
 import Perdume.rpg.gamemode.raid.listener.BossDeathListener;
@@ -66,6 +66,9 @@ public final class Rpg extends JavaPlugin implements Listener {
     private SkyblockManager skyblockManager;
     private FieldManager fieldManager;
     private PortalManager portalManager;
+    private StatsManager statsManager;
+    private EconomyManager economyManager;
+    private ItemManager itemManager;
 
     public static Economy econ = null;
 
@@ -85,6 +88,10 @@ public final class Rpg extends JavaPlugin implements Listener {
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
+
+        this.economyManager = new EconomyManager();
+        if (!economyManager.setupEconomy()) getLogger().severe("Vault 또는 경제 플러그인을 찾을 수 없습니다! 경제 관련 기능이 비활성화됩니다.");
+        else getLogger().info("Vault와 성공적으로 연동되었습니다.");
 
         this.playerDataManager = new PlayerDataManager(this);
         getServer().getPluginManager().registerEvents(this, this);
@@ -142,12 +149,13 @@ public final class Rpg extends JavaPlugin implements Listener {
         }
 
         // 4. [핵심] 현재 로드된 모든 스카이블럭 섬을 저장하고 언로드합니다.
-        if (skyblockManager != null && !skyblockManager.getActiveIslands().isEmpty()) {
-            log.info(skyblockManager.getActiveIslands().size() + "개의 활성화된 섬을 저장합니다...");
-            // activeIslands 맵을 직접 수정하면 오류가 발생하므로, 키 목록의 복사본을 만들어 순회합니다.
-            for (String islandId : new ArrayList<>(skyblockManager.getActiveIslands().keySet())) {
-                skyblockManager.unloadIsland(islandId);
+        if (skyblockManager != null && !skyblockManager.getLoadedIslands().isEmpty()) {
+            log.info("[Rpg] " + skyblockManager.getLoadedIslands().size() + "개의 활성화된 섬을 저장합니다...");
+
+            for (String islandId : new ArrayList<>(skyblockManager.getLoadedIslands().keySet())) {
+                skyblockManager.unloadIslandSync(islandId);
             }
+            log.info("[Rpg] 모든 활성화된 섬 저장이 완료되었습니다.");
         }
 
         // 5. 모든 레이드 인스턴스를 강제로 종료합니다.
@@ -221,6 +229,8 @@ public final class Rpg extends JavaPlugin implements Listener {
         this.skyblockManager = new SkyblockManager(this);
         this.fieldManager = new FieldManager(this); // [신규] FieldManager 초기화
         this.portalManager = new PortalManager(this);
+        this.statsManager = new StatsManager(this);
+        this.itemManager = new ItemManager();
     }
 
     private void cleanupTemporaryWorlds() {
@@ -282,19 +292,26 @@ public final class Rpg extends JavaPlugin implements Listener {
         getCommand("fieldadmin").setExecutor(new FieldAdminCommand(this)); // [신규]
 
         getCommand("스포너분석").setExecutor(new SpawnerCommand());
+        getCommand("스탯").setExecutor(new StatsCommand(this));
+        getCommand("rpgitem").setExecutor(new ItemAdminCommand(this));
 
         // --- 핵심 리스너 등록 ---
         getServer().getPluginManager().registerEvents(this.combatListener, this);
-        getServer().getPluginManager().registerEvents(new IslandSettingsGUIListener(this), this); // [추가]
+        getServer().getPluginManager().registerEvents(new IslandSettingsGUIListener(skyblockManager), this); // [추가]
         getServer().getPluginManager().registerEvents(new PlayerDataListener(this), this);
         getServer().getPluginManager().registerEvents(new IslandWorldListener(this), this); // [추가]
         getServer().getPluginManager().registerEvents(new CobblestoneGeneratorListener(this), this); // [추가]
         getServer().getPluginManager().registerEvents(new PortalListener(this), this); // [신규]
         getServer().getPluginManager().registerEvents(new FieldInstanceListener(this), this); // [신규]
+        getServer().getPluginManager().registerEvents(new IslandMiningListener(skyblockManager), this);
+        getServer().getPluginManager().registerEvents(new IslandStorageGUIListener(), this); // [신규]
+        getServer().getPluginManager().registerEvents(new StatsGUIListener(this), this);
         // getServer().getPluginManager().registerEvents(new GlobalRespawnListener(this), this); // 필요 시 활성화
 
         // --- ISLAND ---
-        getCommand("섬").setExecutor(new IslandCommand(this)); // /섬 명령어 등록
+        IslandCommand ic = new IslandCommand(this);
+        getCommand("섬").setExecutor(ic); // /섬 명령어 등록
+        getCommand("섬").setTabCompleter(ic);
     }
     private boolean setupEconomy() {
         if (getServer().getPluginManager().getPlugin("Vault") == null) return false;
@@ -314,4 +331,9 @@ public final class Rpg extends JavaPlugin implements Listener {
     }
     public FieldManager getFieldManager() {return this.fieldManager;}
     public PortalManager getPortalManager() {return this.portalManager;}
+    public StatsManager getStatsManager() {return statsManager; }
+    public EconomyManager getEconomyManager() {return economyManager;}
+    public ItemManager getItemManager() {
+        return itemManager;
+    }
 }

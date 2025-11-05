@@ -1,59 +1,47 @@
 package Perdume.rpg.gamemode.island;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.Player;
-import java.util.ArrayList;
-import java.util.Collections;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.scheduler.BukkitTask;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * [리팩토링됨] 메모리에 로드된 '활성화된 섬'을 나타내는 '건설 현장' 클래스입니다.
+ * 실제 월드, 보관함, 자동화 Task 등 런타임 객체들을 관리합니다.
+ */
 public class Island {
 
-    private final String id;
-    private UUID owner;
-    private final List<UUID> members = new ArrayList<>();
-    private transient World world;
-    private Location spawnLocation;
+    private final IslandData islandData; // 이 섬의 원본 '설계도'
+    private World world;
+    private transient Inventory storage; // 'transient' 키워드로 저장 방지
+    private transient BukkitTask autoMinerTask; // 'transient' 키워드로 저장 방지
 
-    public Island(Player owner) {
-        this.id = UUID.randomUUID().toString().substring(0, 8);
-        this.owner = owner.getUniqueId();
-        this.members.add(owner.getUniqueId());
+    public Island(IslandData islandData) {
+        this.islandData = islandData;
     }
 
-    public Island(String id, UUID owner, List<UUID> members, Location spawnLocation) {
-        this.id = id;
-        this.owner = owner;
-        this.members.addAll(members);
-        this.spawnLocation = spawnLocation;
-    }
-    
-    /**
-     * [신규] 이 섬의 모든 온라인 멤버에게 메시지를 보냅니다.
-     * @param message 보낼 메시지
-     */
-    public void broadcast(String message) {
-        for (UUID memberUuid : members) {
-            Player member = Bukkit.getPlayer(memberUuid);
-            if (member != null && member.isOnline()) {
-                member.sendMessage("§b[섬] §f" + message);
-            }
-        }
-    }
-
-    // --- 나머지 모든 메소드는 이전과 동일 ---
-    public String getId() { return id; }
-    public UUID getOwner() { return owner; }
-    public List<UUID> getMembers() { return Collections.unmodifiableList(members); }
+    // --- 런타임 객체 Getter/Setter ---
     public World getWorld() { return world; }
-    public Location getSpawnLocation() { return spawnLocation; }
-    public String getWorldName() { return "Island--" + this.id; }
-    public String getTemplateFolderName() { return this.id; }
     public void setWorld(World world) { this.world = world; }
-    public void setSpawnLocation(Location location) { this.spawnLocation = location; }
-    public boolean isMember(UUID uuid) { return members.contains(uuid); }
-    public void addMember(UUID uuid) { if (!members.contains(uuid)) members.add(uuid); }
-    public void removeMember(UUID uuid) { members.remove(uuid); }
+    public Inventory getStorage() { return storage; }
+    public void setStorage(Inventory storage) { this.storage = storage; }
+    public BukkitTask getAutoMinerTask() { return autoMinerTask; }
+    public void setAutoMinerTask(BukkitTask autoMinerTask) { this.autoMinerTask = autoMinerTask; }
+
+    /**
+     * 이 '건설 현장'의 기반이 되는 '설계도' 객체를 반환합니다.
+     * @return IslandData 객체
+     */
+    public IslandData getData() {
+        return islandData;
+    }
+
+    // --- 편의를 위해 '설계도'의 주요 정보에 바로 접근하는 메소드들 ---
+    public String getId() { return islandData.getId(); }
+    public UUID getOwner() { return islandData.getOwner(); }
+    public List<UUID> getMembers() { return islandData.getMembers(); }
+    public boolean isMember(UUID uuid) { return islandData.isMember(uuid); }
+    public String getWorldName() { return islandData.getWorldName(); }
+    public void broadcast(String message) { islandData.broadcast(message); }
 }

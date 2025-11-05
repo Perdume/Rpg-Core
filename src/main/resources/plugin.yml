@@ -4,7 +4,7 @@ main: Perdume.rpg.Rpg
 api-version: '1.21.4'
 author: Perdume
 
-depend: [Vault] # 이 줄을 추가합니다.
+depend: [Vault, AuraSkills] # 이 줄을 추가합니다.
 
 commands:
   # [수정] 보상
@@ -33,7 +33,9 @@ commands:
     description: 스포너
     aliases: [ spawneranalyze ]
     permission: rpg.admin
-
+  스탯:
+    description: 자신의 스탯 정보를 확인합니다.
+    aliases: [내정보, stat, stats]
   # 관리자용 명령어는 편의를 위해 영어 유지
   rpworld:
     description: RPG 월드를 관리합니다.
@@ -50,3 +52,7 @@ commands:
     description: 사냥터(필드)를 디버그하고 관리합니다.
     aliases: [fa]
     permission: rpg.admin.field
+  rpgitem:
+    description: 관리자가 모든 RPG 커스텀 아이템을 얻습니다.
+    aliases: [ritem]
+    permission: op # 권한을 OP로 설정

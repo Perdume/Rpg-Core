@@ -1,92 +1,105 @@
 package Perdume.rpg.gamemode.island.listener;
 
-import Perdume.rpg.Rpg;
 import Perdume.rpg.gamemode.island.Island;
-import Perdume.rpg.gamemode.island.gui.IslandDetailSettingsGUI;
-import Perdume.rpg.gamemode.island.gui.IslandMemberGUI;
+import Perdume.rpg.gamemode.island.IslandData;
 import Perdume.rpg.system.SkyblockManager;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 
+/**
+ * [리팩토링됨] 섬 멤버 관리, 상세 설정 등 여러 하위 GUI의 클릭 이벤트를 모두 처리하는 리스너입니다.
+ */
 public class IslandAllGUIListener implements Listener {
 
-    private final Rpg plugin;
     private final SkyblockManager skyblockManager;
-    private final Set<UUID> invitingPlayers = new HashSet<>();
 
-    public IslandAllGUIListener(Rpg plugin) {
-        this.plugin = plugin;
-        this.skyblockManager = plugin.getSkyblockManager();
+    public IslandAllGUIListener(SkyblockManager skyblockManager) {
+        this.skyblockManager = skyblockManager;
     }
 
     @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
+    public void onAllIslandGUIClick(InventoryClickEvent event) {
         String title = event.getView().getTitle();
-        if (!title.startsWith("§8[섬")) return;
-        event.setCancelled(true);
-
         Player player = (Player) event.getWhoClicked();
         ItemStack clickedItem = event.getCurrentItem();
-        if (clickedItem == null || clickedItem.getType() == Material.AIR) return;
 
-        // --- 1. 멤버 관리 GUI ---
-        if (title.equals(IslandMemberGUI.GUI_TITLE)) {
-            Island island = skyblockManager.getIsland(player);
-            if (island == null) return;
-
-            // 초대 버튼
-            if (clickedItem.getType() == Material.WRITABLE_BOOK) {
-                player.closeInventory();
-                player.sendMessage("§a초대할 플레이어의 이름을 채팅으로 입력해주세요.");
-                invitingPlayers.add(player.getUniqueId());
-            }
-            // 멤버 머리 클릭 (추방)
-            else if (clickedItem.getType() == Material.PLAYER_HEAD) {
-                OfflinePlayer target = ((org.bukkit.inventory.meta.SkullMeta) clickedItem.getItemMeta()).getOwningPlayer();
-                if (target != null) {
-                    skyblockManager.kickFromIsland(player, target.getPlayer());
-                }
-            }
-        }
-        // --- 2. 상세 설정 GUI ---
-        else if (title.equals(IslandDetailSettingsGUI.GUI_TITLE)) {
-            Island island = skyblockManager.getIsland(player);
-            if (island == null) return;
-
-            switch (clickedItem.getType()) {
-                case WATER_BUCKET -> island.getWorld().setStorm(false); // 날씨 맑음
-                case CLOCK -> island.getWorld().setTime(6000); // 시간 정오
-            }
-            player.sendMessage("§a섬 설정을 변경했습니다.");
-            player.closeInventory();
+        // GUI 제목에 따라 분기
+        if (title.equals("§8[ 멤버 관리 ]")) {
+            handleMemberGUIClick(event, player, clickedItem);
+        } else if (title.equals("§8[ 섬 상세 설정 ]")) {
+            handleDetailSettingsGUIClick(event, player, clickedItem);
         }
     }
 
-    @EventHandler
-    public void onPlayerChat(AsyncPlayerChatEvent event) {
-        Player player = event.getPlayer();
-        if (!invitingPlayers.contains(player.getUniqueId())) return;
-
+    private void handleMemberGUIClick(InventoryClickEvent event, Player player, ItemStack clickedItem) {
         event.setCancelled(true);
-        String targetName = event.getMessage();
-        Player target = Bukkit.getPlayer(targetName);
+        if (clickedItem == null) return;
 
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            skyblockManager.inviteToIsland(player, target);
-        });
-        invitingPlayers.remove(player.getUniqueId());
+        Island island = skyblockManager.getLoadedIsland(player);
+        if (island == null) {
+            player.closeInventory();
+            return;
+        }
+
+        // 섬 주인이 아니면 멤버를 추방할 수 없습니다.
+        if (!island.getOwner().equals(player.getUniqueId())) return;
+
+        // 아이템 Lore의 마지막 줄에서 UUID를 읽어와 추방 로직을 실행합니다. (GUI 생성 시 UUID를 숨겨서 저장해야 함)
+        if (clickedItem.hasItemMeta() && clickedItem.getItemMeta().hasLore()) {
+            try {
+                String uuidString = clickedItem.getItemMeta().getLore().get(clickedItem.getItemMeta().getLore().size() - 1);
+                UUID targetUUID = UUID.fromString(org.bukkit.ChatColor.stripColor(uuidString));
+                Player targetPlayer = Bukkit.getPlayer(targetUUID); // 온라인 플레이어만 추방 가능하도록 가정
+
+                if(targetPlayer != null) {
+                    skyblockManager.kickFromIsland(player, targetPlayer);
+                    player.closeInventory();
+                    player.sendMessage("§a" + targetPlayer.getName() + "님을 섬에서 추방했습니다.");
+                }
+            } catch (Exception ignored) {
+                // UUID 파싱에 실패하면 아무것도 하지 않음
+            }
+        }
+    }
+
+    private void handleDetailSettingsGUIClick(InventoryClickEvent event, Player player, ItemStack clickedItem) {
+        event.setCancelled(true);
+        if (clickedItem == null) return;
+
+        Island island = skyblockManager.getLoadedIsland(player);
+        if (island == null) {
+            player.closeInventory();
+            return;
+        }
+
+        // 섬 주인이 아니면 설정을 변경할 수 없습니다.
+        if (!island.getOwner().equals(player.getUniqueId())) return;
+
+        IslandData islandData = island.getData();
+        boolean changed = false;
+
+        // 클릭한 아이템 종류에 따라 설정을 변경합니다. (GUI에 토글 가능한 설정 아이템이 있다고 가정)
+        switch(clickedItem.getType()){
+            case OAK_DOOR:
+                // islandData.setPublic(!islandData.isPublic()); // isPublic 같은 설정이 IslandData에 있다고 가정
+                changed = true;
+                break;
+            case GRASS_BLOCK:
+                // islandData.setVisitorBuild(!islandData.canVisitorBuild()); // 방문자 건축 권한 설정이 있다고 가정
+                changed = true;
+                break;
+        }
+
+        if(changed) {
+            skyblockManager.saveIslandData(islandData); // 변경된 데이터 저장
+            player.sendMessage("§a섬 설정을 변경했습니다.");
+            // new IslandDetailSettingsGUI(island).open(player); // GUI 새로고침
+        }
     }
 }
