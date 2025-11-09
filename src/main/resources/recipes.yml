@@ -1,0 +1,92 @@
+# Rpg-Core 커스텀 조합법 설정
+#
+# type: "SHAPED" (형태가 있는 조합) 또는 "SHAPELESS" (형태가 없는 조합)
+# result-id: ItemManager에 등록된 아이템 ID
+# result-amount: 결과 아이템 수량
+#
+# [SHAPED]
+# shape: 3x3 조합대 모양 (최대 3줄)
+# ingredients:
+#   A: (shape에 사용된 문자)
+#     item-id: 아이템 ID (바닐라: "DIAMOND", 커스텀: "twisted_item_id")
+#     amount: (선택) 해당 슬롯에 필요한 최소 아이템 수량 (기본값 1)
+#
+# [SHAPELESS]
+# ingredients:
+#   - item-id: "아이템ID"
+#     amount: (선택)
+#   - item-id: "다른ID"
+
+recipes:
+  # 뒤틀린 조약돌 업그레이드 레시피 (T1 -> T2)
+  cobblestone_upgrade_1_to_2:
+    type: "SHAPED"
+    result-id: "twisted_cobblestone_tier_2"
+    result-amount: 1
+    shape:
+      - "AAA"
+      - "AAA"
+      - "AAA"
+    ingredients:
+      A:
+        item-id: "twisted_cobblestone_tier_1"
+        amount: 1
+
+  # 뒤틀린 조약돌 업그레이드 레시피 (T2 -> T3)
+  cobblestone_upgrade_2_to_3:
+    type: "SHAPED"
+    result-id: "twisted_cobblestone_tier_3"
+    result-amount: 1
+    shape:
+      - "AAA"
+      - "AAA"
+      - "AAA"
+    ingredients:
+      A:
+        item-id: "twisted_cobblestone_tier_2"
+        amount: 1
+
+  # 뒤틀린 조약돌 업그레이드 레시피 (T3 -> T4)
+  cobblestone_upgrade_3_to_4:
+    type: "SHAPED"
+    result-id: "twisted_cobblestone_tier_4"
+    result-amount: 1
+    shape:
+      - "AAA"
+      - "AAA"
+      - "AAA"
+    ingredients:
+      A:
+        item-id: "twisted_cobblestone_tier_3"
+        amount: 1
+
+  # 뒤틀린 조약돌 업그레이드 레시피 (T4 -> T5)
+  cobblestone_upgrade_4_to_5:
+    type: "SHAPED"
+    result-id: "twisted_cobblestone_tier_5"
+    result-amount: 1
+    shape:
+      - "AAA"
+      - "AAA"
+      - "AAA"
+    ingredients:
+      A:
+        item-id: "twisted_cobblestone_tier_4"
+        amount: 1
+
+  # (예시) 다른 조합법 추가
+  # example_pickaxe:
+  #   type: "SHAPED"
+  #   result-id: "DIAMOND_PICKAXE"
+  #   result-amount: 1
+  #   shape:
+  #     - "AAA"
+  #     - " B "
+  #     - " B "
+  #   ingredients:
+  #     A:
+  #       item-id: "twisted_item_abyss_crystal"
+  #       amount: 1
+  #     B:
+  #       item-id: "STICK"
+  #       amount: 1

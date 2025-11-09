@@ -1,68 +1,71 @@
 package Perdume.rpg.core.item.crafting.recipe;
 
-import Perdume.rpg.core.item.CustomItemUtil;
-import org.bukkit.Material;
+import Perdume.rpg.core.item.CustomItemUtil; // CustomItemUtil import
+// [제거] import org.bukkit.Bukkit;
+// [제거] import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
+// [제거] import java.util.logging.Logger;
 
-import java.util.Objects;
-
-/**
- * [로직 구현] YML에 정의된 하나의 재료 명세서입니다.
- * 바닐라/커스텀 아이템, 개수를 모두 검사(matches)하는 로직을 포함합니다.
- */
 public class IngredientBlueprint {
+    private final ItemStack itemStack;
+    private int amount; // 재료 수량을 저장할 변수
 
-    public enum Type { VANILLA, CUSTOM }
+    // (기존 생성자 - 호환성을 위해 유지)
+    public IngredientBlueprint(ItemStack itemStack) {
+        this.itemStack = itemStack;
+        this.amount = 1;
+    }
 
-    private final Type type;
-    private final Material material; // VANILLA 타입일 때만 사용
-    private final String customId;   // CUSTOM 타입일 때만 사용
-    private final int amount;
-
-    /**
-     * 바닐라 재료 명세서를 생성합니다.
-     */
-    public IngredientBlueprint(Material material, int amount) {
-        this.type = Type.VANILLA;
-        this.material = material;
-        this.customId = null;
+    // RecipeManager에서 사용할 새 생성자
+    public IngredientBlueprint(ItemStack itemStack, int amount) {
+        this.itemStack = itemStack;
         this.amount = amount;
     }
 
-    /**
-     * 커스텀 재료 명세서를 생성합니다.
-     */
-    public IngredientBlueprint(String customId, int amount) {
-        this.type = Type.CUSTOM;
-        this.material = null; // 커스텀 아이템은 ID로만 구분
-        this.customId = customId;
-        this.amount = amount;
+    public ItemStack getItemStack() {
+        return itemStack;
     }
 
-    /**
-     * 실제 조합창의 아이템과 이 재료 명세서가 일치하는지 검사합니다.
-     * @param itemStack 조합창의 실제 아이템
-     * @return 일치하면 true
-     */
-    public boolean matches(ItemStack itemStack) {
-        // 1. 빈 슬롯 검사
-        if (itemStack == null || itemStack.getType() == Material.AIR) {
-            return false; // 명세서는 항상 무언가를 요구하는데, 슬롯이 비었으므로 불일치
-        }
+    public int getAmount() {
+        return amount;
+    }
 
-        // 2. 개수 검사
-        if (itemStack.getAmount() != this.amount) {
+    // [제거] getDebugName() 메서드
+
+    /**
+     * [수정됨] 이 재료 명세서가 실제 아이템과 일치하는지 확인합니다.
+     * (Shaped/Shapeless 레시피에서 호출)
+     *
+     * @param actualItem 조합창 슬롯에 있는 실제 아이템
+     * @return 일치 여부
+     */
+    public boolean matches(ItemStack actualItem) {
+        // [제거] Logger 및 디버그용 변수
+
+        // 1. 필요한 아이템이 있는데, 실제 슬롯은 비어있는 경우
+        if (actualItem == null || actualItem.getType().isAir()) {
+            // [제거] Ingredient FAILED 로그
             return false;
         }
 
-        // 3. 타입 검사 (바닐라 / 커스텀)
-        if (this.type == Type.VANILLA) {
-            // 바닐라 아이템은 Material 타입만 비교합니다.
-            return itemStack.getType() == this.material;
-        } else {
-            // 커스텀 아이템은 NBT ID를 비교합니다.
-            String itemId = CustomItemUtil.getCustomId(itemStack);
-            return Objects.equals(this.customId, itemId);
+        // [제거] 실제 아이템 이름 가져오기 및 [Ingredient matches?] 로그
+
+        // 2. 아이템 종류 비교 (커스텀/바닐라 모두 비교)
+        boolean similar = CustomItemUtil.isSimilar(this.itemStack, actualItem);
+        if (!similar) {
+            // [제거] Ingredient FAILED 로그
+            return false;
         }
+
+        // 3. 아이템 수량 비교
+        boolean amountOk = actualItem.getAmount() >= this.amount;
+        if (!amountOk) {
+            // [제거] Ingredient FAILED 로그
+            return false;
+        }
+
+        // 모든 조건을 통과
+        // [제거] Ingredient SUCCESS 로그
+        return true;
     }
 }

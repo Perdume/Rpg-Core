@@ -1,0 +1,113 @@
+# [AI GENERATED]
+# 아이템 강화(Starforce) 시스템 설정 파일입니다.
+# EnhancementManager.java가 이 파일을 읽어옵니다.
+
+# 강화 재료(촉매제)의 'item-type'을 정의합니다.
+# items.yml의 'enhancement_stone'의 item-type과 일치해야 합니다.
+catalyst:
+  item-type: "catalyst"
+
+# 아이템 타입별 강화 레벨 테이블
+# 키 이름(weapon_physical 등)은 items.yml의 'item-type'과 정확히 일치해야 합니다.
+tables:
+  # --------------------
+  #   물리 무기 강화
+  # --------------------
+  weapon_physical:
+    0: # 0강 -> 1강 시도
+      success_chance: 95.0 # 성공 확률 %
+      fail_chance: 5.0      # 실패 확률 (유지) %
+      destroy_chance: 0.0   # 파괴 확률 %
+      stats: # 성공 시 NBT에 누적될 스탯 (ENHANCE_STATS_KEY)
+        PHYSICAL_POWER: 2.0
+        STRENGTH: 1.0
+    1: # 1강 -> 2강 시도
+      success_chance: 90.0
+      fail_chance: 10.0
+      destroy_chance: 0.0
+      stats:
+        PHYSICAL_POWER: 2.0
+        STRENGTH: 1.0
+    2: # 2강 -> 3강 시도
+      success_chance: 85.0
+      fail_chance: 15.0
+      destroy_chance: 0.0
+      stats:
+        PHYSICAL_POWER: 3.0
+        STRENGTH: 2.0
+    3: # 3강 -> 4강 시도
+      success_chance: 80.0
+      fail_chance: 20.0
+      destroy_chance: 0.0
+      stats:
+        PHYSICAL_POWER: 3.0
+        STRENGTH: 2.0
+    4: # 4강 -> 5강 시도
+      success_chance: 70.0
+      fail_chance: 28.0
+      destroy_chance: 2.0 # 파괴 시작
+      stats:
+        PHYSICAL_POWER: 5.0
+        STRENGTH: 3.0
+    # (5강부터 9강까지는 생략... 필요시 위와 같은 패턴으로 추가)
+    9: # 9강 -> 10강 (최대)
+      success_chance: 30.0
+      fail_chance: 50.0
+      destroy_chance: 20.0
+      stats:
+        PHYSICAL_POWER: 10.0
+        STRENGTH: 5.0
+
+  # --------------------
+  #   마법 무기 강화
+  # --------------------
+  weapon_magical:
+    0: # 0강 -> 1강 시도
+      success_chance: 95.0
+      fail_chance: 5.0
+      destroy_chance: 0.0
+      stats:
+        MAGIC_POWER: 2.0
+        WISDOM: 1.0
+    1: # 1강 -> 2강 시도
+      success_chance: 90.0
+      fail_chance: 10.0
+      destroy_chance: 0.0
+      stats:
+        MAGIC_POWER: 2.0
+        WISDOM: 1.0
+    # (이후 레벨 생략...)
+    9: # 9강 -> 10강 (최대)
+      success_chance: 30.0
+      fail_chance: 50.0
+      destroy_chance: 20.0
+      stats:
+        MAGIC_POWER: 10.0
+        WISDOM: 5.0
+
+  # --------------------
+  #   방어구 강화
+  # --------------------
+  armor:
+    0: # 0강 -> 1강 시도
+      success_chance: 100.0
+      fail_chance: 0.0
+      destroy_chance: 0.0
+      stats:
+        HEALTH: 5.0
+        TOUGHNESS: 0.5
+    1: # 1강 -> 2강 시도
+      success_chance: 95.0
+      fail_chance: 5.0
+      destroy_chance: 0.0
+      stats:
+        HEALTH: 5.0
+        TOUGHNESS: 0.5
+    # (이후 레벨 생략...)
+    9: # 9강 -> 10강 (최대)
+      success_chance: 40.0
+      fail_chance: 50.0
+      destroy_chance: 10.0
+      stats:
+        HEALTH: 20.0
+        TOUGHNESS: 2.0

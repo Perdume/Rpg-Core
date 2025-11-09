@@ -5,9 +5,11 @@ import Perdume.rpg.core.economy.EconomyManager;
 import Perdume.rpg.core.player.data.PlayerData;
 import Perdume.rpg.core.player.data.PlayerDataManager;
 import Perdume.rpg.core.player.stats.PlayerStats;
+import Perdume.rpg.core.player.stats.RpgCustomStats;
 import Perdume.rpg.core.player.stats.StatType;
 import dev.aurelium.auraskills.api.AuraSkillsApi;
 import dev.aurelium.auraskills.api.event.skill.XpGainEvent;
+import dev.aurelium.auraskills.api.stat.Stat;
 import dev.aurelium.auraskills.api.stat.StatModifier;
 import dev.aurelium.auraskills.api.stat.Stats;
 import dev.aurelium.auraskills.api.user.SkillsUser;
@@ -33,10 +35,12 @@ public class StatsManager implements Listener {
     private final EconomyManager economyManager;
     private final double EXP_TO_MONEY_RATE = 0.1; // 1 경험치당 0.1원
 
+    private Stat magicPowerStat;
+
     public StatsManager(Rpg plugin) {
         this.plugin = plugin;
         this.playerDataManager = plugin.getPlayerDataManager();
-        this.auraSkillsApi = AuraSkillsApi.get();
+        this.auraSkillsApi = plugin.getAuraSkillsApi();
         this.economyManager = plugin.getEconomyManager();
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
@@ -61,8 +65,7 @@ public class StatsManager implements Listener {
     }
 
     /**
-     * [핵심] 플레이어의 모든 스탯을 다시 계산하고 AuraSkills에 모디파이어로 적용합니다.
-     * 스탯을 찍거나, 장비를 바꾸거나, 버프를 받을 때마다 이 메소드를 호출해야 합니다.
+     * [핵심 수정] 플레이어의 모든 스탯을 다시 계산하고 AuraSkills에 모디파이어로 적용합니다.
      */
     public void updateAllStatModifiers(Player player) {
         PlayerData data = playerDataManager.getPlayerData(player);
@@ -70,41 +73,48 @@ public class StatsManager implements Listener {
         PlayerStats stats = data.getStats();
         SkillsUser user = auraSkillsApi.getUser(player.getUniqueId());
 
-        // --- 힘 (Strength) 환산 ---
-        // 힘 1당 AuraSkills 힘 1, 최대 체력 0.5 증가
+        // --- 힘 (Strength) 환산 -> RpgCustomStats.PHYSICAL_POWER ---
         double strengthValue = stats.getStat(StatType.STRENGTH);
-        user.addStatModifier(new StatModifier("rpg_strength_bonus", Stats.STRENGTH, strengthValue));
-        user.addStatModifier(new StatModifier("rpg_strength_health_bonus", Stats.HEALTH, strengthValue * 0.5));
 
-        // --- 지능 (Intelligence) 환산 ---
-        // 지능 1당 AuraSkills 지혜(마법력) 1, 마나 재생 0.02 증가
+        // [기존 코드]
+        // user.addStatModifier(new StatModifier("rpg_strength_bonus", Stats.STRENGTH, strengthValue));
+        // user.addStatModifier(new StatModifier("rpg_strength_health_bonus", Stats.HEALTH, strengthValue * 0.5));
+
+        // [신규 코드]
+        user.addStatModifier(new StatModifier("rpg_strength_to_physical_power", RpgCustomStats.PHYSICAL_POWER, strengthValue));
+        // (힘이 체력을 주던 로직은 Stats.HEALTH로 유지)
+        user.addStatModifier(new StatModifier("rpg_strength_to_health", Stats.HEALTH, strengthValue * 0.5));
+
+
+        // --- 지능 (Intelligence) 환산 -> RpgCustomStats.MAGIC_POWER ---
         double intelligenceValue = stats.getStat(StatType.INTELLIGENCE);
-        user.addStatModifier(new StatModifier("rpg_intelligence_bonus", Stats.WISDOM, intelligenceValue));
-        // (마나 재생 등은 AuraSkills에서 커스텀 스탯으로 추가해야 할 수 있습니다)
 
-        // --- 체력 (Vitality) 환산 ---
-        // 체력 1당 AuraSkills 체력 2 증가
+        // [기존 코드]
+        // if (this.magicPowerStat != null) { ... }
+        // user.addStatModifier(new StatModifier("rpg_intelligence_to_wisdom", Stats.WISDOM, manaBonus));
+
+        // [신규 코드]
+        user.addStatModifier(new StatModifier("rpg_intelligence_to_magic_power", RpgCustomStats.MAGIC_POWER, intelligenceValue));
+        // (지능이 마나를 주던 로직은 Stats.WISDOM으로 유지)
+        user.addStatModifier(new StatModifier("rpg_intelligence_to_wisdom", Stats.WISDOM, intelligenceValue * 0.5));
+
+
+        // --- 체력 (Vitality) 환산 (기존과 동일) ---
         double vitalityValue = stats.getStat(StatType.VITALITY);
         user.addStatModifier(new StatModifier("rpg_vitality_bonus", Stats.HEALTH, vitalityValue * 2.0));
 
-        // --- 민첩 (Agility) 환산 ---
-        // 민첩 1당 AuraSkills 민첩(공격속도 관련) 1 증가 (AuraSkills에 Agility 스탯이 있다면)
-        // double agilityValue = stats.getStat(StatType.AGILITY);
-        // user.addStatModifier(new StatModifier("rpg_agility_bonus", Stats.AGILITY, agilityValue));
-
+        // ...
         Rpg.log.info(player.getName() + "님의 스탯을 AuraSkills에 환산 적용했습니다.");
     }
 
-    /**
-     * 플레이어에게 적용된 모든 스탯 모디파이어를 제거합니다.
-     */
     private void removeAllStatModifiers(Player player) {
         SkillsUser user = auraSkillsApi.getUser(player.getUniqueId());
-        user.removeStatModifier("rpg_strength_bonus");
-        user.removeStatModifier("rpg_strength_health_bonus");
-        user.removeStatModifier("rpg_intelligence_bonus");
+        // [신규] 제거할 모디파이어 이름 변경
+        user.removeStatModifier("rpg_strength_to_physical_power");
+        user.removeStatModifier("rpg_strength_to_health");
+        user.removeStatModifier("rpg_intelligence_to_magic_power");
+        user.removeStatModifier("rpg_intelligence_to_wisdom");
         user.removeStatModifier("rpg_vitality_bonus");
-        // user.removeStatModifier("rpg_agility_bonus");
     }
 
     /**
@@ -143,5 +153,7 @@ public class StatsManager implements Listener {
             economyManager.depositPlayer(player, moneyToGive);
         }
     }
+
+
 }
 

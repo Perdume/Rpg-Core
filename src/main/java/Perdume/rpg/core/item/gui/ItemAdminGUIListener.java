@@ -51,15 +51,36 @@ public class ItemAdminGUIListener implements Listener {
             return;
         }
 
-        // 아이템 지급 로직
+        // --- [디버그] 아이템 지급 로직 (NBT 덤프 포함) ---
         if (event.getRawSlot() < 45) {
-            ItemStack itemToGive = clickedItem.clone();
-            if (event.isShiftClick()) {
-                itemToGive.setAmount(64);
+            // [수정] 템플릿을 복제하는 대신, '인스턴스'를 생성하여 지급합니다.
+            String itemId = itemManager.getItemId(clickedItem);
+            if (itemId == null) return; // 알 수 없는 아이템
+
+            int amount = event.isShiftClick() ? 64 : 1;
+
+            // 1. [핵심] createItemInstance가 아이템을 생성합니다.
+            ItemStack itemToGive = itemManager.createItemInstance(itemId, 1);
+
+            // --- [신규 디버그 로직] ---
+            Rpg.log.info("--- [디버그/지급] createItemInstance() 직후 NBT 덤프 ---");
+            Rpg.log.info("[디버그/지급] 아이템: " + itemId);
+            if (itemToGive != null && itemToGive.hasItemMeta()) {
+                // 2. Bukkit API를 사용하여 생성된 아이템의 모든 메타데이터(NBT/PDC 포함)를 문자열로 변환
+                String metaString = itemToGive.getItemMeta().serialize().toString();
+                Rpg.log.info("[디버그/지급] [NBT 데이터]: " + metaString);
             } else {
-                itemToGive.setAmount(1);
+                Rpg.log.warning("[디버그/지급] [NBT 데이터]: (알 수 없음 - ItemMeta가 null입니다)");
             }
-            player.getInventory().addItem(itemToGive);
+            Rpg.log.info("--- [디버그/지급] NBT 덤프 완료 ---");
+
+
+            if (amount == 64) {
+                itemToGive.setAmount(64); // 수량만 64개로 변경
+                player.getInventory().addItem(itemToGive);
+            } else {
+                player.getInventory().addItem(itemToGive);
+            }
         }
     }
 }

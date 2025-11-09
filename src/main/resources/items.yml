@@ -1,0 +1,67 @@
+# Rpg 플러그인의 '장비' 아이템 '설계도(템플릿)'를 저장하는 DB입니다.
+# '재료' 아이템(twisted_item 등)은 Enum을 통해 코드에서 직접 로드됩니다.
+#
+# item-type:
+#   enhancement.yml, enchant.yml의 테이블과 연결되는 아이템의 "유형"입니다.
+#   [중요] "weapon" 대신 "weapon_physical", "weapon_magical"로 세분화합니다.
+#
+# stats:
+#   AuraSkills에 등록된 스탯의 ID를 사용합니다. (대소문자 구분 없음)
+#   기본 스탯: STRENGTH, HEALTH, REGENERATION, LUCK, WISDOM, TOUGHNESS, ...
+#   커스텀 스탯: PHYSICAL_POWER, MAGIC_POWER (RpgCustomStats.java에서 등록한 ID)
+#
+# requirements:
+#   AuraSkills에 등록된 요구 조건 ID를 사용합니다.
+#   LEVEL, STAT (예: STAT: { type: "PHYSICAL_POWER", value: 10 })
+#
+
+items:
+  # --- 테스트용 장비 ---
+  beginner_sword: # 아이템 고유 ID (템플릿 키)
+    item-type: "weapon_physical" # [수정] weapon -> weapon_physical
+    base-material: "WOODEN_SWORD"
+    custom-model-data: 1001
+    display-name: "§a초심자의 검"
+    lore:
+      - "§7가장 기본적인 검입니다."
+    stats:
+      PHYSICAL_POWER: 5.0
+      HEALTH: 10.0
+    requirements:
+      LEVEL: 1
+
+  wizard_staff:
+    item-type: "weapon_magical" # [수정] weapon -> weapon_magical
+    base-material: "STICK"
+    custom-model-data: 1002
+    display-name: "§b견습 마법사의 지팡이"
+    lore:
+      - "§7약한 마력이 느껴집니다."
+    stats:
+      MAGIC_POWER: 8.0
+      WISDOM: 5.0
+    requirements:
+      LEVEL: 1
+
+  simple_helmet:
+    item-type: "armor"
+    base-material: "IRON_HELMET"
+    custom-model-data: 1003
+    display-name: "§f간단한 철 투구"
+    lore:
+      - "§7테스트용 방어구입니다."
+    stats:
+      HEALTH: 20.0
+      TOUGHNESS: 2.0
+    requirements:
+      LEVEL: 1
+
+  # --- 강화 재료 ---
+  enhancement_stone:
+    item-type: "catalyst"
+    base-material: "AMETHYST_SHARD"
+    custom-model-data: 3001
+    display-name: "§e강화석"
+    lore:
+      - "§7아이템을 강화하는 데 사용됩니다."
+    glowing: true

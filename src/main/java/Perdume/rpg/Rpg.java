@@ -5,14 +5,29 @@ import Perdume.rpg.command.*;
 import Perdume.rpg.command.admin.SpawnAdminCommand;
 import Perdume.rpg.config.LocationManager;
 import Perdume.rpg.core.economy.EconomyManager;
+import Perdume.rpg.core.item.EnhancementManager;
 import Perdume.rpg.core.item.ItemManager;
+import Perdume.rpg.core.item.PotentialManager;
+import Perdume.rpg.core.item.crafting.RecipeManager;
+import Perdume.rpg.core.item.crafting.listener.CraftingTableListener;
+import Perdume.rpg.core.item.crafting.listener.CustomCraftGUIListener;
+import Perdume.rpg.core.item.crafting.listener.CustomCraftingListener;
+import Perdume.rpg.core.item.crafting.listener.RecipeBookListener;
+import Perdume.rpg.core.item.gui.ItemAdminGUIListener;
+import Perdume.rpg.core.item.listener.BlockInteractListener;
+import Perdume.rpg.core.item.listener.EnhancementGUIListener;
+import Perdume.rpg.core.item.listener.EquipmentListener;
+import Perdume.rpg.core.item.listener.PotentialGUIListener;
 import Perdume.rpg.core.party.PartyCommand;
 import Perdume.rpg.core.player.Manager.StatsManager;
 import Perdume.rpg.core.player.data.PlayerDataListener;
 import Perdume.rpg.core.player.data.PlayerDataManager;
 import Perdume.rpg.core.player.listener.CombatListener;
+import Perdume.rpg.core.player.listener.CustomDamageTraitHandler;
 import Perdume.rpg.core.player.listener.RaidSessionListener;
 import Perdume.rpg.core.player.listener.StatsGUIListener;
+import Perdume.rpg.core.player.stats.RpgCustomStats;
+import Perdume.rpg.core.player.stats.RpgCustomTraits;
 import Perdume.rpg.core.reward.RewardCommand;
 import Perdume.rpg.core.reward.listener.RewardClaimListener;
 import Perdume.rpg.core.reward.manager.RewardManager;
@@ -32,6 +47,9 @@ import Perdume.rpg.world.WorldManager;
 import Perdume.rpg.world.command.WorldAdminCommand;
 import Perdume.rpg.world.gui.EditSessionListener;
 import Perdume.rpg.world.task.EditWorldCleanupTask;
+import dev.aurelium.auraskills.api.AuraSkillsApi;
+import dev.aurelium.auraskills.api.AuraSkillsBukkit;
+import dev.aurelium.auraskills.api.registry.NamespacedRegistry;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -69,6 +87,11 @@ public final class Rpg extends JavaPlugin implements Listener {
     private StatsManager statsManager;
     private EconomyManager economyManager;
     private ItemManager itemManager;
+    private RecipeManager recipeManager;
+    private AuraSkillsApi auraSkillsApi;
+    private EnhancementManager enhancementManager;
+    private PotentialManager potentialManager; // [AI] 4단계
+    private AuraSkillsBukkit auraSkillsBukkit;
 
     public static Economy econ = null;
 
@@ -76,33 +99,38 @@ public final class Rpg extends JavaPlugin implements Listener {
     public void onEnable() {
         instance = this;
         log = this.getLogger();
-
-        // [핵심] 1. 설정 및 데이터 관리자를 가장 먼저 초기화합니다.
+        this.saveResource("Reinforce.yml", false); // [AI] Reinforce.yml
         this.saveDefaultConfig();
         initializeTemplateWorlds();
-        LocationManager.initialize(this); // 오직 LocationManager만 준비시킵니다.
-
-        // 2. 외부 API 연동 (Vault)
+        this.saveResource("items.yml", false); // [신규]
+        this.saveResource("item_versions.yml", false);
+        this.saveResource("enhancement.yml", false);
+        this.saveResource("enhancement.yml", false); // [AI] 큐브(잠재능력) YML
+        LocationManager.initialize(this);
         if (!setupEconomy()) {
             log.severe("Vault 플러그인이 없어 비활성화됩니다!");
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
-
+        if (getServer().getPluginManager().isPluginEnabled("AuraSkills")) {
+            this.auraSkillsApi = AuraSkillsApi.get();
+            this.auraSkillsBukkit = AuraSkillsBukkit.get(); // [AI] 2.x API
+        } else {
+            log.severe("AuraSkills 플러그인이 없어 비활성화됩니다!");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         this.economyManager = new EconomyManager();
         if (!economyManager.setupEconomy()) getLogger().severe("Vault 또는 경제 플러그인을 찾을 수 없습니다! 경제 관련 기능이 비활성화됩니다.");
         else getLogger().info("Vault와 성공적으로 연동되었습니다.");
-
         this.playerDataManager = new PlayerDataManager(this);
         getServer().getPluginManager().registerEvents(this, this);
-
-        // 3. 내부 핵심 시스템 초기화 (리스너보다 먼저!)
         initializeSystems();
-
-        // 4. 모든 명령어 및 리스너 등록
         registerCommandsAndSystems();
-
         new PortalParticleTask(this).runTaskTimer(this, 0L, 1L);
+        itemManager.loadItems();
+        recipeManager.loadRecipes();
+        registerCustomStats();
 
         log.info("RPG Plugin이 성공적으로 활성화되었습니다.");
     }
@@ -230,7 +258,12 @@ public final class Rpg extends JavaPlugin implements Listener {
         this.fieldManager = new FieldManager(this); // [신규] FieldManager 초기화
         this.portalManager = new PortalManager(this);
         this.statsManager = new StatsManager(this);
-        this.itemManager = new ItemManager();
+        this.itemManager = new ItemManager(this, this.auraSkillsApi, this.auraSkillsBukkit);
+        this.recipeManager = new RecipeManager(this);
+        this.statsManager = new StatsManager(this);
+        this.enhancementManager = new EnhancementManager(this); // [신규]
+        this.potentialManager = new PotentialManager(this);
+        this.enhancementManager = new EnhancementManager(this);
     }
 
     private void cleanupTemporaryWorlds() {
@@ -306,6 +339,18 @@ public final class Rpg extends JavaPlugin implements Listener {
         getServer().getPluginManager().registerEvents(new IslandMiningListener(skyblockManager), this);
         getServer().getPluginManager().registerEvents(new IslandStorageGUIListener(), this); // [신규]
         getServer().getPluginManager().registerEvents(new StatsGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomCraftingListener(this), this);
+        getServer().getPluginManager().registerEvents(new CraftingTableListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomCraftGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new RecipeBookListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomCraftGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomCraftingListener(this), this);
+        getServer().getPluginManager().registerEvents(new RecipeBookListener(this), this);
+        getServer().getPluginManager().registerEvents(new EnhancementGUIListener(this), this);
+        getServer().getPluginManager().registerEvents(new BlockInteractListener(this), this);
+        getServer().getPluginManager().registerEvents(new PotentialGUIListener(this), this); // [AI] 4단계
+        getServer().getPluginManager().registerEvents(new EquipmentListener(this), this); // [AI] EquipmentListener 등록
+        getServer().getPluginManager().registerEvents(new ItemAdminGUIListener(this), this);
         // getServer().getPluginManager().registerEvents(new GlobalRespawnListener(this), this); // 필요 시 활성화
 
         // --- ISLAND ---
@@ -321,6 +366,32 @@ public final class Rpg extends JavaPlugin implements Listener {
         return econ != null;
     }
 
+    /**
+     * [신규] AuraSkills에 우리가 만든 스탯과 특성을 등록합니다.
+     */
+    private void registerCustomStats() {
+        if (this.auraSkillsApi == null) return;
+
+        // "rpg"라는 이름공간(pluginname)으로 레지스트리를 사용합니다.
+        NamespacedRegistry registry = auraSkillsApi.useRegistry("rpg", getDataFolder());
+
+        // 1. 특성(기능) 등록
+        registry.registerTrait(RpgCustomTraits.PHYSICAL_DAMAGE); // [수정] 물리 특성 등록
+        registry.registerTrait(RpgCustomTraits.MAGIC_DAMAGE);
+
+        // 2. 스탯(항목) 등록
+        registry.registerStat(RpgCustomStats.PHYSICAL_POWER);
+        registry.registerStat(RpgCustomStats.MAGIC_POWER);
+
+        // 3. 특성 핸들러(실제 구현) 등록
+        // [수정] MagicDamageTraitHandler -> CustomDamageTraitHandler
+        auraSkillsApi.getHandlers().registerTraitHandler(new CustomDamageTraitHandler(this, this.auraSkillsApi));
+
+        log.info("AuraSkills에 '물리 공격력' 및 '마법 공격력' 커스텀 스탯/특성을 성공적으로 등록했습니다.");
+    }
+
+
+
     // --- Getter 메소드 ---
     public static Rpg getInstance() { return instance; }
     public RaidManager getRaidManager() { return raidManager; }
@@ -335,5 +406,21 @@ public final class Rpg extends JavaPlugin implements Listener {
     public EconomyManager getEconomyManager() {return economyManager;}
     public ItemManager getItemManager() {
         return itemManager;
+    }
+    public RecipeManager getRecipeManager() {
+        return recipeManager;
+    }
+    // [신규] StatsManager 등이 AuraSkills API에 접근할 수 있도록 Getter 추가
+    public AuraSkillsApi getAuraSkillsApi() {
+        return this.auraSkillsApi;
+    }
+    public EnhancementManager getEnhancementManager() {
+        return this.enhancementManager;
+    }
+    public AuraSkillsBukkit getAuraSkillsBukkit() {
+        return this.auraSkillsBukkit;
+    }
+    public PotentialManager getPotentialManager() { // [AI] 4단계
+        return this.potentialManager;
     }
 }

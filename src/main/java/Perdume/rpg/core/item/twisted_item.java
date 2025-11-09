@@ -6,18 +6,17 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 
-import java.util.*;
+import java.util.EnumSet;
+import java.util.Optional;
 
 /**
- * 섬에서 채광 시 특별한 확률로 드롭되는 '뒤틀린 광석'의 모든 정보를 정의하고 관리하는 Enum 클래스입니다.
+ * 섬 레벨에 따라 광물 생성기에서 확률적으로 드랍되는 아이템
  */
 public enum twisted_item {
 
-    // --- Enum 상수 정의 ---
-    // 이름, Lore, 빛나는 효과만 추가하고, 아이템 종류는 원래 광물의 드롭템을 사용합니다.
     DARK_FRAGMENT(
             EnumSet.of(Material.COAL_ORE, Material.DEEPSLATE_COAL_ORE), 0.1, "§8어둠에 물든 석탄",
-            Material.COAL, 1000, true,
+            Material.COAL, 1000, true, // 'true'가 'something' 필드 (빛나는 효과)
             "§7평범한 석탄과 달리, 불길한 기운이 느껴집니다."
     ),
     TWISTED_STEEL(
@@ -46,71 +45,81 @@ public enum twisted_item {
             "§7세상의 모든 빛을 빨아들일 듯한 불길한 결정입니다."
     );
 
-    // --- Enum 필드 ---
-    private final Set<Material> sourceOres;
-    private final double dropChance;
-    private final String displayName;
-    private final Material baseItemMaterial; // 아이템의 기본 재료 (예: RAW_IRON, COAL)
-    private final int customModelData;
-    private final boolean glowing; // 빛나는 효과 여부
-    private final String[] lore;
+    private final EnumSet<Material> sourceOres; // 이 아이템을 드랍하는 원본 광석
+    private final double dropChance; // 드랍 확률
+    private final String name; // 아이템 이름
+    private final Material dropItem; // 아이템의 기반 재료
+    private final int customModelData; // 커스텀 모델 데이터
+    private final boolean something; // 'glowing' 대신 'something' 필드
+    private final String lore; // 아이템 설명
 
-    /**
-     * SpecialOre Enum 생성자
-     */
-    twisted_item(Set<Material> sourceOres, double dropChance, String displayName, Material baseItemMaterial, int customModelData, boolean glowing, String... lore) {
+    twisted_item(EnumSet<Material> sourceOres, double dropChance, String name, Material dropItem, int customModelData, boolean something, String lore) {
         this.sourceOres = sourceOres;
         this.dropChance = dropChance;
-        this.displayName = displayName;
-        this.baseItemMaterial = baseItemMaterial;
+        this.name = name;
+        this.dropItem = dropItem;
         this.customModelData = customModelData;
-        this.glowing = glowing;
+        this.something = something;
         this.lore = lore;
     }
 
-    // --- 공개 메소드 ---
+    /**
+     * ItemManager가 사용할 고유 ID
+     * @return "twisted_item_dark_fragment"
+     */
+    public String getItemId() {
+        return "twisted_item_" + this.name().toLowerCase();
+    }
+
+    /**
+     * [수정됨] 새로운 ItemFactory 기준에 맞게 메서드 호출 변경
+     * @param amount 수량
+     * @return ItemStack
+     */
+    public ItemStack getItemStack(int amount) {
+        // ItemFactory를 사용하여 NBT 태그를 포함한 아이템 생성
+        ItemFactory factory = new ItemFactory(this.dropItem)
+                // .setAmount(amount) // build(amount)가 처리
+                .setDisplayName(this.name)      // .setName -> .setDisplayName
+                .setLore(this.lore)             // .addLore -> .setLore (String...은 단일 String도 받음)
+                .setCustomModelData(this.customModelData)
+                .setCustomItemId(this.getItemId()); // NBT 태그 추가
+
+        // 'something' (기존 'glowing') 플래그가 true이면, 빛나는 효과 적용
+        if (this.something) {
+            factory.addEnchant(Enchantment.LURE, 1, true); // 아무 인챈트나 적용
+            factory.addItemFlags(ItemFlag.HIDE_ENCHANTS);    // 인챈트 문구 숨기기
+        }
+
+        return factory.build(amount); // .create() -> .build(amount)
+    }
+
+    // Getter (필요시 사용)
+    public EnumSet<Material> getSourceOres() {
+        return sourceOres;
+    }
+
     public double getDropChance() {
         return dropChance;
     }
 
-    /**
-     * 이 Enum에 정의된 정보를 바탕으로 실제 ItemStack 객체를 생성하여 반환합니다.
-     * @param amount 생성할 아이템의 개수
-     * @return 완성된 ItemStack
-     */
-    public ItemStack getItemStack(int amount) {
-        ItemFactory factory = new ItemFactory(this.baseItemMaterial)
-                .setDisplayName(this.displayName)
-                .setLore(this.lore)
-                .setCustomModelData(this.customModelData);
-
-        // glowing 플래그가 true이면, 빛나는 효과를 적용합니다.
-        if (this.glowing) {
-            factory.addEnchant(Enchantment.LURE, 1, true); // 아무 인챈트나 적용
-            factory.addItemFlags(ItemFlag.HIDE_ENCHANTS);      // 인챈트 문구 숨기기
-        }
-
-        return factory.build(amount);
-    }
-
-    // --- Static 영역 (효율적인 조회를 위함) ---
-    private static final Map<Material, twisted_item> ORE_MAP = new HashMap<>();
-
-    // 서버 로드 시, 모든 광물 정보를 미리 맵에 저장하여 검색 속도를 높입니다.
-    static {
-        for (twisted_item specialOre : values()) {
-            for (Material sourceOre : specialOre.sourceOres) {
-                ORE_MAP.put(sourceOre, specialOre);
-            }
-        }
+    public String getName() {
+        return name;
     }
 
     /**
-     * 부서진 광물(Material)에 해당하는 SpecialOre를 맵에서 빠르게 찾습니다.
-     * @param material 조회할 광물의 Material
-     * @return Optional<SpecialOre> (없을 경우 Optional.empty())
+     * 원본 광물(Material)을 기반으로 일치하는 twisted_item을 찾습니다.
+     * (CobblestoneGeneratorListener 등에서 사용)
+     *
+     * @param material 플레이어가 캔 광물 (예: Material.COAL_ORE)
+     * @return 일치하는 twisted_item (없으면 null)
      */
     public static Optional<twisted_item> getBySource(Material material) {
-        return Optional.ofNullable(ORE_MAP.get(material));
+        for (twisted_item item : values()) {
+            if (item.getSourceOres().contains(material)) {
+                return Optional.of(item);
+            }
+        }
+        return null; // 일치하는 아이템 없음
     }
 }

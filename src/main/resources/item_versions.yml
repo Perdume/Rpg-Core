@@ -1,0 +1,18 @@
+# 아이템 밸런스 패치 시 버전을 관리하는 파일입니다.
+# /ritem edit [id]로 아이템 저장 시, 해당 아이템의 버전이 1씩 증가합니다.
+versions:
+  beginner_sword: 1
+  wizard_staff: 1
+
+  # 마이그레이션된 아이템들
+  twisted_cobblestone_tier_1: 1
+  twisted_cobblestone_tier_2: 1
+  twisted_cobblestone_tier_3: 1
+  twisted_cobblestone_tier_4: 1
+  twisted_cobblestone_tier_5: 1
+  twisted_item_dark_fragment: 1
+  twisted_item_twisted_steel: 1
+  twisted_item_golden_core: 1
+  twisted_item_mana_crystal: 1
+  twisted_item_chaos_circuit: 1
+  twisted_item_abyss_crystal: 1

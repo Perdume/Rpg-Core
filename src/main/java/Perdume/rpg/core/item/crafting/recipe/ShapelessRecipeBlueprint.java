@@ -1,12 +1,12 @@
 package Perdume.rpg.core.item.crafting.recipe;
 
-import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * YML의 `type: SHAPELESS` (순서가 없는) 조합법을 나타내는 클래스입니다.
+ * [최종 수정]
  */
 public class ShapelessRecipeBlueprint implements CustomRecipe {
 
@@ -18,11 +18,15 @@ public class ShapelessRecipeBlueprint implements CustomRecipe {
         this.requiredIngredients = requiredIngredients;
     }
 
+    public List<IngredientBlueprint> getRequiredIngredients() {
+        return requiredIngredients;
+    }
+
     @Override
-    public boolean matches(CraftingInventory inventory) {
+    public boolean matches(ItemStack[] matrix) {
         // 조합창에 있는 실제 아이템 목록을 복사
         List<ItemStack> actualItems = new ArrayList<>();
-        for (ItemStack item : inventory.getMatrix()) {
+        for (ItemStack item : matrix) { // inventory.getMatrix() -> matrix
             if (item != null && !item.getType().isAir()) {
                 actualItems.add(item.clone()); // 복사본 사용
             }

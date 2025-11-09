@@ -1,0 +1,137 @@
+# "큐브" (커스텀 인챈트/잠재능력) 시스템 설정 파일
+#
+# 이 파일은 3가지 주요 섹션으로 구성됩니다:
+# 1. cubes: 큐브 아이템 자체를 정의합니다.
+# 2. grades: 잠재능력 등급(레어, 에픽...)과 등급업 확률을 정의합니다.
+# 3. option_pools: 아이템 유형별, 등급별로 나올 수 있는 옵션의 목록과 가중치를 정의합니다.
+#
+
+# 1. 큐브 아이템 정의
+# (여기에 정의된 item-id는 items.yml에 실제 아이템으로 등록되어 있어야 합니다)
+cubes:
+  red_cube:
+    item-id: "red_cube" # items.yml에 등록될 ID
+    # 큐브가 등급업을 시도할지 여부
+    can_rank_up: true
+    # 등급업 실패 시 파괴 확률 (0 = 파괴 없음)
+    destroy_chance_on_fail: 0.0
+
+  black_cube:
+    item-id: "black_cube"
+    can_rank_up: true
+    destroy_chance_on_fail: 0.0
+    # '블랙 큐브'의 "변경 전/후 선택" 기능은 GUI 리스너에서 별도로 구현됩니다.
+
+# 2. 잠재능력 등급(Grade) 정의
+# (주의: 등급 순서는 이 파일에 정의된 순서(RARE -> EPIC -> UNIQUE -> LEGENDARY)를 따릅니다)
+grades:
+  RARE:
+    display: "§9[Rare]"
+    # 이 등급에서 나타날 수 있는 옵션 줄 수
+    lines: 2
+    # 이 등급에서 'red_cube' 사용 시 등급업(EPIC) 확률
+    rank_up_chance:
+      red_cube: 10.0 # 10%
+      black_cube: 15.0 # 15%
+
+  EPIC:
+    display: "§5[Epic]"
+    lines: 3
+    # 이 등급에서 'red_cube' 사용 시 등급업(UNIQUE) 확률
+    rank_up_chance:
+      red_cube: 5.0
+      black_cube: 8.0
+
+  UNIQUE:
+    display: "§d[Unique]"
+    lines: 3
+    # 이 등급에서 'red_cube' 사용 시 등급업(LEGENDARY) 확률
+    rank_up_chance:
+      red_cube: 2.0
+      black_cube: 4.0
+
+  LEGENDARY:
+    display: "§6[Legendary]"
+    lines: 3
+    rank_up_chance: {} # (최대 등급이므로 등급업 불가)
+
+# 3. 옵션 풀 (Option Pools)
+# 아이템 유형 (enhancement.yml의 item-types 키와 일치시킴)별,
+# 등급(grades 키와 일치시킴)별로 나올 수 있는 옵션 목록입니다.
+#
+# type: "STAT" (플랫 스탯) 또는 "PERCENT" (% 스탯)
+# stat: AuraSkills 스탯 ID (예: STRENGTH, HEALTH, PHYSICAL_POWER, MAGIC_POWER)
+# min/max: 옵션의 최소/최대값 (정수 또는 소수)
+# weight: 이 옵션이 등장할 가중치 (높을수록 잘 나옴)
+#
+option_pools:
+  # 'weapon' (enhancement.yml에 정의된 무기 그룹)
+  weapon:
+    # 레어 등급에서 나올 수 있는 옵션
+    RARE:
+      # (가중치 100) 힘 1~3
+      - { type: "STAT", stat: "STRENGTH", min: 1, max: 3, weight: 100 }
+      # (가중치 100) 지혜 1~3 (마나/경험치용)
+      - { type: "STAT", stat: "WISDOM", min: 1, max: 3, weight: 100 }
+      # (가중치 50) 물리/마법 공격력 1~3
+      - { type: "STAT", stat: "PHYSICAL_POWER", min: 1, max: 3, weight: 50 }
+      - { type: "STAT", stat: "MAGIC_POWER", min: 1, max: 3, weight: 50 }
+
+    # 에픽 등급에서 나올 수 있는 옵션
+    EPIC:
+      - { type: "STAT", stat: "STRENGTH", min: 4, max: 7, weight: 100 }
+      - { type: "STAT", stat: "WISDOM", min: 4, max: 7, weight: 100 }
+      - { type: "STAT", stat: "PHYSICAL_POWER", min: 4, max: 7, weight: 80 }
+      - { type: "STAT", stat: "MAGIC_POWER", min: 4, max: 7, weight: 80 }
+      # (가중치 40) 힘/지혜 %
+      - { type: "PERCENT", stat: "STRENGTH", min: 1.0, max: 3.0, weight: 40 }
+      - { type: "PERCENT", stat: "WISDOM", min: 1.0, max: 3.0, weight: 40 }
+
+    # 유니크 등급
+    UNIQUE:
+      - { type: "STAT", stat: "STRENGTH", min: 8, max: 12, weight: 100 }
+      - { type: "STAT", stat: "PHYSICAL_POWER", min: 8, max: 12, weight: 80 }
+      - { type: "STAT", stat: "MAGIC_POWER", min: 8, max: 12, weight: 80 }
+      # (가중치 50) 힘/지혜 %
+      - { type: "PERCENT", stat: "STRENGTH", min: 4.0, max: 6.0, weight: 50 }
+      - { type: "PERCENT", stat: "WISDOM", min: 4.0, max: 6.0, weight: 50 }
+      # (가중치 20) 크리티컬 확률/대미지
+      - { type: "STAT", stat: "CRIT_CHANCE", min: 1.0, max: 3.0, weight: 20 }
+      - { type: "STAT", stat: "CRIT_DAMAGE", min: 1.0, max: 3.0, weight: 20 }
+
+    # 레전드리 등급
+    LEGENDARY:
+      - { type: "STAT", stat: "STRENGTH", min: 13, max: 18, weight: 100 }
+      # (가중치 80) 물리/마법 공격력 %
+      - { type: "PERCENT", stat: "PHYSICAL_POWER", min: 5.0, max: 8.0, weight: 80 }
+      - { type: "PERCENT", stat: "MAGIC_POWER", min: 5.0, max: 8.0, weight: 80 }
+      # (가중치 50) 힘/지혜 %
+      - { type: "PERCENT", stat: "STRENGTH", min: 7.0, max: 10.0, weight: 50 }
+      - { type: "PERCENT", stat: "WISDOM", min: 7.0, max: 10.0, weight: 50 }
+      # (가중치 30) 크리티컬 확률/대미지
+      - { type: "STAT", stat: "CRIT_CHANCE", min: 4.0, max: 7.0, weight: 30 }
+      - { type: "STAT", stat: "CRIT_DAMAGE", min: 4.0, max: 7.0, weight: 30 }
+      # (가중치 10) 특수 옵션 (이 스탯들은 AuraSkills YML에 커스텀 스탯으로 등록 필요)
+      # - { type: "STAT", stat: "BOSS_DAMAGE", min: 5.0, max: 10.0, weight: 10 }
+      # - { type: "STAT", stat: "IGNORE_DEFENSE", min: 5.0, max: 10.0, weight: 10 }
+
+  # 'armor' (enhancement.yml에 정의된 방어구 그룹)
+  armor:
+    RARE:
+      - { type: "STAT", stat: "HEALTH", min: 5, max: 15, weight: 100 }
+      - { type: "STAT", stat: "TOUGHNESS", min: 1, max: 2, weight: 100 }
+      - { type: "STAT", stat: "STRENGTH", min: 1, max: 3, weight: 50 }
+      - { type: "STAT", stat: "WISDOM", min: 1, max: 3, weight: 50 }
+    EPIC:
+      - { type: "STAT", stat: "HEALTH", min: 16, max: 30, weight: 100 }
+      - { type: "PERCENT", stat: "HEALTH", min: 1.0, max: 3.0, weight: 50 }
+      - { type: "STAT", stat: "STRENGTH", min: 4, max: 7, weight: 50 }
+      - { type: "STAT", stat: "WISDOM", min: 4, max: 7, weight: 50 }
+    UNIQUE:
+      - { type: "PERCENT", stat: "HEALTH", min: 4.0, max: 6.0, weight: 100 }
+      - { type: "PERCENT", stat: "STRENGTH", min: 1.0, max: 3.0, weight: 50 }
+      - { type: "PERCENT", stat: "WISDOM", min: 1.0, max: 3.0, weight: 50 }
+    LEGENDARY:
+      - { type: "PERCENT", stat: "HEALTH", min: 7.0, max: 10.0, weight: 100 }
+      - { type: "PERCENT", stat: "STRENGTH", min: 4.0, max: 6.0, weight: 50 }
+      - { type: "PERCENT", stat: "WISDOM", min: 4.0, max: 6.0, weight: 50 }

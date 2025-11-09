@@ -1,24 +1,23 @@
 package Perdume.rpg.core.item.crafting.recipe;
 
-import org.bukkit.inventory.CraftingInventory;
 import org.bukkit.inventory.ItemStack;
 
 /**
- * 모든 YML 기반 커스텀 조합법이 구현해야 하는 인터페이스입니다.
+ * Shaped, Shapeless 레시피를 하나로 묶는 인터페이스입니다.
+ * [최종 수정] matches의 파라미터를 ItemStack[]로 변경
  */
 public interface CustomRecipe {
 
     /**
-     * 현재 조합창의 상태가 이 레시피와 일치하는지 확인합니다.
-     * @param inventory 조합창 인벤토리
-     * @return 일치하면 true
+     * 조합창의 상태가 이 레시피와 일치하는지 확인합니다.
+     * @param matrix 3x3 조합 매트릭스 (ItemStack 배열, 9칸)
+     * @return 일치 여부
      */
-    boolean matches(CraftingInventory inventory);
+    boolean matches(ItemStack[] matrix);
 
     /**
      * 이 레시피의 결과 아이템을 반환합니다.
-     * @return 조합 결과물
+     * @return 결과 아이템 (복사본)
      */
     ItemStack getResult();
 }
-
